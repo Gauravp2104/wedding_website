@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+.vercel
+server/data/rsvps.json
+server/data/rsvps.xlsx
+.DS_Store
+*.log
