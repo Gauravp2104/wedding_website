@@ -3,14 +3,19 @@
 A full-stack, mobile-responsive wedding site with a South-Indian inspired design:
 kolam ornaments, temple motifs, gold-on-maroon palette, and **six scroll-driven
 ceremony sections** whose colour scheme brightens for **AM** ceremonies and deepens
-for **PM** ceremonies. Ends with an animated **RSVP** form whose submissions are
-**saved to a JSON file** and **exported to a downloadable Excel (.xlsx) spreadsheet**.
+for **PM** ceremonies. Includes a **photo album** the hosts upload into and guests
+browse, and an animated **RSVP** form whose submissions are **saved to a durable
+store**, **mirrored to a Google Sheet**, and **emailed to the hosts** the moment
+they arrive.
 
 ## Stack
 - **Frontend:** React 18 + Vite + Framer Motion
-- **Local dev backend:** Node/Express + ExcelJS (saves to local files)
-- **Production backend (Vercel):** Serverless functions + Google Sheets (durable store)
-  + ExcelJS (Excel generated on demand)
+- **Local dev backend:** Node/Express (RSVPs → local JSON; photos → local disk)
+- **Production backend (Vercel):** Serverless functions + Google Sheets (RSVPs) +
+  Vercel Blob (album photos)
+- **Notifications:** Nodemailer (SMTP) — emails every RSVP to a list of recipients
+- **Observability:** structured JSON logs (request id + latency per call) and a
+  `/api/health` endpoint exposing live counters
 
 ## Quick start
 
@@ -24,29 +29,88 @@ Then open **http://localhost:5173**.
 
 The Vite dev server proxies `/api/*` calls to the Express backend on port 4000.
 
-## Viewing & exporting RSVPs
+## Email notifications (sent on every RSVP)
 
-**Local dev (Express):** every RSVP is saved to `server/data/rsvps.json` and the
-spreadsheet `server/data/rsvps.xlsx` is regenerated on each submission.
+Every RSVP triggers an email to one or more recipients. Configure SMTP in
+`server/.env` (copy from `server/.env.example`):
+
+| Variable | Meaning |
+|----------|---------|
+| `SMTP_HOST` | SMTP server (default `smtp.gmail.com`) |
+| `SMTP_PORT` | `587` (STARTTLS) or `465` (implicit TLS) |
+| `SMTP_USER` | SMTP login — e.g. your Gmail address |
+| `SMTP_PASS` | SMTP password — for Gmail, a **App Password** |
+| `RSVP_NOTIFY_TO` | comma/space-separated list of people to notify |
+| `RSVP_NOTIFY_FROM` | optional `From:` address (defaults to `SMTP_USER`) |
+
+> **Gmail:** enable 2-Step Verification, then create an
+> [App Password](https://myaccount.google.com/apppasswords) and use it as `SMTP_PASS`.
+
+Email is **best-effort**: if sending fails (or no recipients are set) the RSVP is
+still saved and the failure is logged — the guest never sees an error.
+
+## Viewing RSVPs & the Google Sheet mirror
+
+**Local dev (Express):** every RSVP is saved to `server/data/rsvps.json` (the source of
+truth) and, when Google creds are configured in `server/.env`, **also appended live to
+your Google Sheet** (best-effort — never blocks the RSVP). Without Google creds the
+mirror is skipped and logged.
 
 - **View as JSON:** `http://localhost:4000/api/rsvps`
-- **Download Excel (.xlsx):** `http://localhost:4000/api/rsvps.xlsx`
-- **Or open the file directly:** `server/data/rsvps.xlsx`
 
 **Production (Vercel):** every RSVP is appended as a row in your **Google Sheet**;
-the same `/api/rsvps` (JSON) and `/api/rsvps.xlsx` (download) endpoints read live
-from that Sheet. See **Deploying to Vercel** below.
+`/api/rsvps` reads live from that Sheet. See **Deploying to Vercel** below.
 
-Either way the Excel sheet has one row per guest with columns: Name, Attending,
-Guests, Email, Phone, Events, Message, Submitted. No email or SMS setup is required.
+### Backfill existing RSVPs into the Sheet
+
+To push the rows already in `server/data/rsvps.json` up to the Sheet (e.g. the first
+time you connect Sheets), run:
+
+```bash
+npm run sync:sheets
+```
+
+It reads Google creds from `server/.env` and appends every row. It appends
+unconditionally, so **run it once against a fresh tab** (re-running duplicates rows).
+
+## Photo album
+
+A scroll section (`#album`) shows a responsive grid of photos with a full-screen
+lightbox (arrow-key / Esc navigation). Hosts add photos through a password-gated
+uploader; guests just browse.
+
+- **Reveal the uploader:** open the site with `?admin` (e.g.
+  `http://localhost:5173/?admin`), or double-click the small ⚙ in the album section.
+  Enter the **`ADMIN_PASSWORD`** and pick photos.
+- **Local dev:** photos are stored on disk in `server/data/uploads/` and served from
+  `/uploads/...`.
+- **Production (Vercel):** photos upload **directly from the browser to Vercel Blob**
+  (the file bytes never pass through a function, so large photos bypass Vercel's
+  4.5 MB request limit). The gallery lists them via `/api/album/list`.
+
+> The `ADMIN_PASSWORD` is a shared secret typed into the browser — it is **never bundled
+> into the client JS** (don't give it a `VITE_` name). Anyone who knows it can upload, so
+> keep it private. Fine for a wedding album.
+
+## Observability
+
+- **Structured logs:** every request and RSVP emits a single-line JSON log with a
+  short `requestId`, the event name (`rsvp.saved`, `rsvp.email.sent`,
+  `rsvp.email.failed`, `http.request`), and `durationMs`. These show up in your
+  terminal locally and in the Vercel function logs in production.
+- **`X-Request-Id`** header is set on every response to correlate with the logs.
+- **`/api/health`** returns `{ ok, metrics, email }` — live counters for
+  `rsvpReceived / rsvpSaved / rsvpFailed / emailsSent / emailsFailed / emailsSkipped /
+  sheetAppended / sheetFailed / albumUploaded / albumUploadFailed`, plus uptime and the
+  configured recipient count. (On Vercel the counters are a per-invocation snapshot; the
+  durable totals live in your Google Sheet.)
 
 ## Deploying to Vercel (recommended)
 
 Vercel runs the backend as **serverless functions with a read-only, ephemeral
-filesystem** — so local files (`rsvps.json` / `rsvps.xlsx`) do **not** persist there.
-Instead, production uses a **Google Sheet as the durable store**, and the Excel file is
-**generated on demand** from the Sheet (`/api/rsvps.xlsx`). The Sheet doubles as your
-live, shareable backup.
+filesystem** — so local files (`rsvps.json`) do **not** persist there. Instead,
+production uses a **Google Sheet as the durable store** (your live, shareable backup),
+and each RSVP is **emailed to the hosts** via SMTP.
 
 ### 1. Create the Google Sheet + service account (one time)
 1. Create a Google Sheet. Rename the first tab to **`RSVPs`**. Copy its **Sheet ID**
@@ -68,16 +132,38 @@ In the Vercel project → **Settings → Environment Variables**:
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | the `client_email` |
 | `GOOGLE_PRIVATE_KEY` | the `private_key` (paste exactly, including the `\n`s) |
 | `GOOGLE_SHEET_TAB` | `RSVPs` *(optional; defaults to `RSVPs`)* |
+| `SMTP_HOST` | SMTP server (e.g. `smtp.gmail.com`) |
+| `SMTP_PORT` | `587` or `465` |
+| `SMTP_USER` | SMTP login |
+| `SMTP_PASS` | SMTP password / Gmail App Password |
+| `RSVP_NOTIFY_TO` | comma/space-separated recipients to email on each RSVP |
+| `RSVP_NOTIFY_FROM` | optional `From:` address (defaults to `SMTP_USER`) |
+| `ADMIN_PASSWORD` | password required to upload photos to the album |
+| `BLOB_READ_WRITE_TOKEN` | **auto-injected** when you connect a Blob store (step 3) |
 
-### 3. Deploy
-Push the repo to GitHub and **Import** it in Vercel (or run `vercel` from the CLI).
-`vercel.json` already builds the client to `client/dist` and serves the `/api/*`
-functions. No extra config needed.
+### 3. Connect a Vercel Blob store (for the album)
+In the Vercel project → **Storage → Create / Connect → Blob**. Connecting it
+**auto-injects `BLOB_READ_WRITE_TOKEN`** into the project's environment — you don't paste
+it manually. This is where uploaded photos live. (Free tier is plenty for a wedding.)
 
-- **The site:** your Vercel URL
-- **RSVPs as JSON:** `/api/rsvps`
-- **Download Excel:** `/api/rsvps.xlsx`
-- **Live spreadsheet:** the Google Sheet itself (every RSVP appears as a new row)
+### 4. Deploy + free domain
+Push the repo to GitHub and **Import** it in Vercel (or run `vercel` then `vercel --prod`
+from the CLI). `vercel.json` builds the client to `client/dist`; the `api/*` and
+`api/album/*` functions are auto-mapped. No extra config needed.
+
+You get a **free `*.vercel.app` URL** immediately. To pick the subdomain, go to
+**Settings → Domains** and edit it to any available label, e.g.
+`gautam-sandhya.vercel.app`. (Prefer a real custom domain later? Buy one from
+Cloudflare/Namecheap and add it under the same Domains page — DNS instructions are shown
+there.)
+
+Then verify:
+- **The site:** your `*.vercel.app` URL
+- **Health + metrics:** `/api/health`
+- **RSVPs as JSON:** `/api/rsvps` · **Live spreadsheet:** the Google Sheet itself
+- **Email:** every RSVP lands in the inboxes listed in `RSVP_NOTIFY_TO`
+- **Album:** open `/?admin`, enter `ADMIN_PASSWORD`, upload a photo (try a >4.5 MB one to
+  confirm the Blob direct-upload path); it should appear in the grid and persist on reload.
 
 To test the production functions locally, run `vercel dev` with the same env vars in a
 root `.env.local`.
@@ -93,7 +179,15 @@ npm start               # Express serves client/dist AND the /api routes on one 
 ```
 
 Point `DATA_DIR` at your mounted volume (e.g. `DATA_DIR=/data`) so RSVPs survive
-restarts. RSVPs save to `$DATA_DIR/rsvps.json` and `$DATA_DIR/rsvps.xlsx`.
+restarts. RSVPs save to `$DATA_DIR/rsvps.json` and album photos to `$DATA_DIR/uploads/`.
+Set the same `SMTP_*` / `RSVP_NOTIFY_TO` / Google / `ADMIN_PASSWORD` env vars as needed.
+
+To keep **album uploads on local disk** (instead of Vercel Blob) in this self-hosted
+build, build the client with `VITE_BLOB=0`:
+
+```bash
+VITE_BLOB=0 npm run build && npm start
+```
 
 ## Editing content
 - **Events / timings / colours:** `client/src/data/events.js`

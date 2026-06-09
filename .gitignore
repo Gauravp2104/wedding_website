@@ -4,6 +4,6 @@ dist/
 .env.local
 .vercel
 server/data/rsvps.json
-server/data/rsvps.xlsx
+server/data/uploads/
 .DS_Store
 *.log

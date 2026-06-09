@@ -8,11 +8,14 @@
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",
     "dev": "concurrently -n server,client -c magenta,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
     "build": "npm --prefix client run build",
-    "start": "npm --prefix server start"
+    "start": "npm --prefix server start",
+    "sync:sheets": "node scripts/sync-sheets.js"
   },
   "dependencies": {
-    "exceljs": "^4.4.0",
-    "googleapis": "^144.0.0"
+    "@vercel/blob": "^0.27.0",
+    "dotenv": "^16.4.7",
+    "googleapis": "^144.0.0",
+    "nodemailer": "^6.10.1"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

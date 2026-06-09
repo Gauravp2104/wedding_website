@@ -9,6 +9,7 @@ export default function Nav() {
       <div className="nav__links">
         <a href="#story">The Couple</a>
         <a href="#events">Events</a>
+        <a href="#album">Album</a>
         <a href="#rsvp">RSVP</a>
       </div>
     </nav>

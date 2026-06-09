@@ -1,11 +1,17 @@
 import { appendRsvp } from '../lib/sheets.js';
+import { sendRsvpNotification } from '../lib/mailer.js';
+import { logger, incr, newRequestId } from '../lib/logger.js';
 
-// POST /api/rsvp — append one RSVP row to the Google Sheet.
+// POST /api/rsvp — append one RSVP row to the Google Sheet and email the hosts.
 export default async function handler(req, res) {
+  const requestId = newRequestId();
+  res.setHeader('X-Request-Id', requestId);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed.' });
   }
 
+  incr('rsvpReceived');
   const { name, attending } = req.body || {};
   if (!name || !attending) {
     return res.status(400).json({ ok: false, error: 'Name and attendance are required.' });
@@ -24,9 +30,16 @@ export default async function handler(req, res) {
 
   try {
     await appendRsvp(entry);
-    res.json({ ok: true, saved: true });
+    incr('rsvpSaved');
+    logger.info('rsvp.saved', { requestId, name: entry.name });
+
+    // Best-effort notification — never blocks or fails the RSVP.
+    const email = await sendRsvpNotification(entry, { requestId });
+
+    res.json({ ok: true, saved: true, notified: email.sent });
   } catch (err) {
-    console.error('Failed to append RSVP:', err);
+    incr('rsvpFailed');
+    logger.error('rsvp.save.failed', { requestId, error: err.message });
     res.status(500).json({ ok: false, error: 'Could not save your RSVP. Please try again.' });
   }
 }

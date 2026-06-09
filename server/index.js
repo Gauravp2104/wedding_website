@@ -1,11 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import ExcelJS from 'exceljs';
+import multer from 'multer';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
+import { sendRsvpNotification, notifyRecipients } from '../lib/mailer.js';
+import { appendRsvp } from '../lib/sheets.js';
+import { logger, incr, getMetrics, newRequestId } from '../lib/logger.js';
 
 dotenv.config();
 
@@ -14,15 +17,38 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // (e.g. DATA_DIR=/data) so RSVPs survive restarts and redeploys.
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, 'data');
 const RSVP_FILE = join(DATA_DIR, 'rsvps.json');
-const XLSX_FILE = join(DATA_DIR, 'rsvps.xlsx');
+const UPLOADS_DIR = join(DATA_DIR, 'uploads');
 const CLIENT_DIST = join(__dirname, '..', 'client', 'dist');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded album photos as static files (mirrors Blob's public URLs in prod).
+app.use('/uploads', express.static(UPLOADS_DIR));
+
 /* ──────────────────────────────────────────────────────────────
- *  Storage helpers
+ *  Observability — tag every request with an id and log its
+ *  outcome + latency as structured JSON.
+ * ────────────────────────────────────────────────────────────── */
+app.use((req, res, next) => {
+  req.id = newRequestId();
+  req.startedAt = Date.now();
+  res.setHeader('X-Request-Id', req.id);
+  res.on('finish', () => {
+    logger.info('http.request', {
+      requestId: req.id,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - req.startedAt,
+    });
+  });
+  next();
+});
+
+/* ──────────────────────────────────────────────────────────────
+ *  Storage helpers (durable JSON record of every RSVP)
  * ────────────────────────────────────────────────────────────── */
 
 async function readRsvps() {
@@ -42,68 +68,82 @@ async function saveRsvp(entry) {
   return all;
 }
 
-/* ── Excel workbook built from the RSVP rows ───────────────────── */
+/* ──────────────────────────────────────────────────────────────
+ *  Google Sheets mirror — JSON is the source of truth; the Sheet
+ *  is a live, shareable copy. Best-effort: never blocks the RSVP.
+ * ────────────────────────────────────────────────────────────── */
 
-const COLUMNS = [
-  { header: 'Name', key: 'name', width: 28 },
-  { header: 'Attending', key: 'attending', width: 12 },
-  { header: 'Guests', key: 'guests', width: 8 },
-  { header: 'Email', key: 'email', width: 30 },
-  { header: 'Phone', key: 'phone', width: 20 },
-  { header: 'Events', key: 'events', width: 40 },
-  { header: 'Message', key: 'message', width: 50 },
-  { header: 'Submitted', key: 'submittedAt', width: 24 },
-];
-
-function buildWorkbook(rows) {
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'Gautam & Sandhya Wedding';
-  wb.created = new Date();
-
-  const ws = wb.addWorksheet('RSVPs');
-  ws.columns = COLUMNS;
-
-  // Style the header row
-  ws.getRow(1).font = { bold: true, color: { argb: 'FFF5E6C8' } };
-  ws.getRow(1).fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF7A1F2B' },
-  };
-  ws.getRow(1).alignment = { vertical: 'middle' };
-
-  rows.forEach((r) => {
-    ws.addRow({
-      name: r.name,
-      attending: r.attending === 'yes' ? 'Yes' : 'No',
-      guests: r.guests,
-      email: r.email || '',
-      phone: r.phone || '',
-      events: (r.events || []).join(', '),
-      message: r.message || '',
-      submittedAt: r.submittedAt,
-    });
-  });
-
-  ws.views = [{ state: 'frozen', ySplit: 1 }]; // keep header visible
-  return wb;
+function sheetsConfigured() {
+  return Boolean(
+    process.env.GOOGLE_SHEET_ID &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      process.env.GOOGLE_PRIVATE_KEY
+  );
 }
 
-// Regenerate the on-disk .xlsx so a fresh export always exists alongside the JSON.
-async function writeWorkbookFile(rows) {
-  const wb = buildWorkbook(rows);
-  await wb.xlsx.writeFile(XLSX_FILE);
+async function mirrorToSheet(entry, requestId) {
+  if (!sheetsConfigured()) {
+    logger.warn('rsvp.sheet.skipped', { requestId, reason: 'google env not configured' });
+    return { mirrored: false, skipped: true };
+  }
+  try {
+    await appendRsvp(entry);
+    incr('sheetAppended');
+    logger.info('rsvp.sheet.appended', { requestId, name: entry.name });
+    return { mirrored: true };
+  } catch (err) {
+    incr('sheetFailed');
+    logger.error('rsvp.sheet.failed', { requestId, error: err.message });
+    return { mirrored: false, error: err.message };
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ *  Album uploads — stored on local disk in DATA_DIR/uploads.
+ *  (In production on Vercel, api/album/* uses Vercel Blob instead.)
+ * ────────────────────────────────────────────────────────────── */
+
+const IMAGE_RE = /\.(jpe?g|png|webp|heic|gif)$/i;
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => {
+      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${Date.now()}-${safe}`);
+    },
+  }),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB per file
+  fileFilter: (_req, file, cb) => cb(null, IMAGE_RE.test(file.originalname)),
+});
+
+// Gate uploads BEFORE multer touches the body — otherwise multer writes the
+// file to disk during middleware even for an unauthorized request.
+function requireAdmin(req, res, next) {
+  const pw = req.headers['x-album-password'];
+  if (!process.env.ADMIN_PASSWORD || pw !== process.env.ADMIN_PASSWORD) {
+    incr('albumUploadFailed');
+    logger.warn('album.upload.unauthorized', { requestId: req.id });
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  next();
 }
 
 /* ──────────────────────────────────────────────────────────────
  *  Routes
  * ────────────────────────────────────────────────────────────── */
 
+// Health + live metrics for monitoring.
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({
+    ok: true,
+    metrics: getMetrics(),
+    email: { recipients: notifyRecipients().length },
+  });
 });
 
 app.post('/api/rsvp', async (req, res) => {
+  incr('rsvpReceived');
   const { name, attending } = req.body || {};
   if (!name || !attending) {
     return res.status(400).json({ ok: false, error: 'Name and attendance are required.' });
@@ -122,11 +162,19 @@ app.post('/api/rsvp', async (req, res) => {
 
   try {
     const all = await saveRsvp(entry);
-    await writeWorkbookFile(all);
-    console.log(`📨 RSVP saved: ${entry.name} (${all.length} total)`);
-    res.json({ ok: true, saved: true });
+    incr('rsvpSaved');
+    logger.info('rsvp.saved', { requestId: req.id, name: entry.name, total: all.length });
+
+    // Best-effort side effects — neither blocks nor fails the RSVP.
+    const [sheet, email] = await Promise.all([
+      mirrorToSheet(entry, req.id),
+      sendRsvpNotification(entry, { requestId: req.id }),
+    ]);
+
+    res.json({ ok: true, saved: true, notified: email.sent, mirrored: sheet.mirrored });
   } catch (err) {
-    console.error('Failed to save RSVP:', err);
+    incr('rsvpFailed');
+    logger.error('rsvp.save.failed', { requestId: req.id, error: err.message });
     res.status(500).json({ ok: false, error: 'Could not save your RSVP. Please try again.' });
   }
 });
@@ -136,17 +184,31 @@ app.get('/api/rsvps', async (_req, res) => {
   res.json(await readRsvps());
 });
 
-// Download all RSVPs as an Excel (.xlsx) file, generated on the fly.
-app.get('/api/rsvps.xlsx', async (_req, res) => {
-  const rows = await readRsvps();
-  const wb = buildWorkbook(rows);
-  res.setHeader(
-    'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
-  res.setHeader('Content-Disposition', 'attachment; filename="rsvps.xlsx"');
-  await wb.xlsx.write(res);
-  res.end();
+// Public album listing — read the uploads dir, newest first.
+app.get('/api/album/list', async (_req, res) => {
+  try {
+    const files = await readdir(UPLOADS_DIR).catch(() => []);
+    const images = files
+      .filter((f) => IMAGE_RE.test(f))
+      .sort((a, b) => (a < b ? 1 : -1)) // timestamp-prefixed → newest first
+      .map((f) => ({ url: `/uploads/${f}`, name: f }));
+    res.json({ images });
+  } catch {
+    res.json({ images: [] });
+  }
+});
+
+// Admin photo upload (multipart). Password via x-album-password header.
+app.post('/api/album/upload', requireAdmin, upload.array('files', 20), async (req, res) => {
+  const files = req.files || [];
+  incr('albumUploaded', files.length);
+  const images = files.map((f) => ({
+    url: `/uploads/${f.filename}`,
+    name: f.filename,
+    uploadedAt: new Date().toISOString(),
+  }));
+  logger.info('album.uploaded', { requestId: req.id, count: images.length });
+  res.json({ ok: true, images });
 });
 
 // Serve the built React client (production). In dev, Vite serves it on :5173
@@ -160,10 +222,36 @@ if (existsSync(CLIENT_DIST)) {
 }
 
 const PORT = process.env.PORT || 4000;
+
+// Ensure the uploads dir exists before serving so admin uploads never 500.
+await mkdir(UPLOADS_DIR, { recursive: true });
+
 app.listen(PORT, () => {
+  const recipients = notifyRecipients();
+  logger.info('server.started', {
+    port: PORT,
+    rsvpFile: RSVP_FILE,
+    uploadsDir: UPLOADS_DIR,
+    clientServed: existsSync(CLIENT_DIST),
+    emailRecipients: recipients.length,
+    emailConfigured: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
+    sheetsConfigured: sheetsConfigured(),
+    albumAdminConfigured: Boolean(process.env.ADMIN_PASSWORD),
+  });
   console.log(`\n🕉  Wedding API running on http://localhost:${PORT}`);
-  console.log(`   • RSVPs saved to:  ${RSVP_FILE}`);
-  console.log(`   • Excel export:    ${XLSX_FILE}`);
-  console.log(`   • Static client:   ${existsSync(CLIENT_DIST) ? 'served' : 'not built (run npm run build)'}`);
-  console.log(`   • Download Excel:  http://localhost:${PORT}/api/rsvps.xlsx\n`);
+  console.log(`   • RSVPs saved to:   ${RSVP_FILE}`);
+  console.log(`   • Google Sheets:    ${sheetsConfigured() ? 'mirroring on' : 'not configured'}`);
+  console.log(
+    `   • Email notifications: ${
+      process.env.SMTP_USER && process.env.SMTP_PASS
+        ? `${recipients.length} recipient(s)`
+        : 'NOT configured (set SMTP_USER/SMTP_PASS + RSVP_NOTIFY_TO)'
+    }`
+  );
+  console.log(
+    `   • Album uploads:    ${
+      process.env.ADMIN_PASSWORD ? 'admin password set' : 'NOT configured (set ADMIN_PASSWORD)'
+    } → ${UPLOADS_DIR}`
+  );
+  console.log(`   • Health + metrics: http://localhost:${PORT}/api/health\n`);
 });
