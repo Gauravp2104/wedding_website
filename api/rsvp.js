@@ -1,8 +1,7 @@
-import { appendRsvp } from '../lib/sheets.js';
-import { sendRsvpNotification } from '../lib/mailer.js';
-import { logger, incr, newRequestId } from '../lib/logger.js';
+import { appendRsvp } from '../lib/rsvp-store.js';
+import { incr, logger, newRequestId } from '../lib/logger.js';
 
-// POST /api/rsvp — append one RSVP row to the Google Sheet and email the hosts.
+// POST /api/rsvp — append one RSVP to the rsvps.json blob (Vercel deployment).
 export default async function handler(req, res) {
   const requestId = newRequestId();
   res.setHeader('X-Request-Id', requestId);
@@ -29,14 +28,10 @@ export default async function handler(req, res) {
   };
 
   try {
-    await appendRsvp(entry);
+    const all = await appendRsvp(entry);
     incr('rsvpSaved');
-    logger.info('rsvp.saved', { requestId, name: entry.name });
-
-    // Best-effort notification — never blocks or fails the RSVP.
-    const email = await sendRsvpNotification(entry, { requestId });
-
-    res.json({ ok: true, saved: true, notified: email.sent });
+    logger.info('rsvp.saved', { requestId, name: entry.name, total: all.length });
+    res.json({ ok: true, saved: true });
   } catch (err) {
     incr('rsvpFailed');
     logger.error('rsvp.save.failed', { requestId, error: err.message });

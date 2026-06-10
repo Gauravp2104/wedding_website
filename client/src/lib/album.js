@@ -4,13 +4,7 @@
  *   • Production (Vercel): browser uploads directly to Vercel Blob.
  *   • Local dev: multipart POST to the Express server (disk storage).
  */
-// Production builds upload to Vercel Blob; dev uploads to Express disk.
-// Override with VITE_BLOB=1 (force Blob, e.g. testing a local build) or
-// VITE_BLOB=0 (force disk, e.g. self-hosting the build on a persistent disk).
-const USE_BLOB =
-  import.meta.env.VITE_BLOB === '0'
-    ? false
-    : import.meta.env.PROD || import.meta.env.VITE_BLOB === '1';
+const USE_BLOB = import.meta.env.PROD || import.meta.env.VITE_BLOB === '1';
 
 export async function listAlbum() {
   const res = await fetch('/api/album/list');

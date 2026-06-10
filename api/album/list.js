@@ -1,8 +1,8 @@
 import { list } from '@vercel/blob';
 
 /*
- * GET /api/album/list — public gallery listing. Reads photos stored under the
- * "album/" prefix in Vercel Blob and returns their public CDN URLs, newest first.
+ * GET /api/album/list — public gallery listing. Returns photos stored under the
+ * "album/" prefix in Vercel Blob (newest first) as public CDN URLs.
  */
 export default async function handler(_req, res) {
   try {

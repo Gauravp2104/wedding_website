@@ -6,15 +6,13 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
-import { sendRsvpNotification, notifyRecipients } from '../lib/mailer.js';
-import { appendRsvp } from '../lib/sheets.js';
 import { logger, incr, getMetrics, newRequestId } from '../lib/logger.js';
 
 dotenv.config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // DATA_DIR can be pointed at a mounted persistent volume in production
-// (e.g. DATA_DIR=/data) so RSVPs survive restarts and redeploys.
+// (e.g. DATA_DIR=/data) so RSVPs and photos survive restarts and redeploys.
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, 'data');
 const RSVP_FILE = join(DATA_DIR, 'rsvps.json');
 const UPLOADS_DIR = join(DATA_DIR, 'uploads');
@@ -24,7 +22,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve uploaded album photos as static files (mirrors Blob's public URLs in prod).
+// Serve uploaded album photos as static files.
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 /* ──────────────────────────────────────────────────────────────
@@ -48,7 +46,7 @@ app.use((req, res, next) => {
 });
 
 /* ──────────────────────────────────────────────────────────────
- *  Storage helpers (durable JSON record of every RSVP)
+ *  Storage helpers — every RSVP is appended to a durable JSON file.
  * ────────────────────────────────────────────────────────────── */
 
 async function readRsvps() {
@@ -69,38 +67,7 @@ async function saveRsvp(entry) {
 }
 
 /* ──────────────────────────────────────────────────────────────
- *  Google Sheets mirror — JSON is the source of truth; the Sheet
- *  is a live, shareable copy. Best-effort: never blocks the RSVP.
- * ────────────────────────────────────────────────────────────── */
-
-function sheetsConfigured() {
-  return Boolean(
-    process.env.GOOGLE_SHEET_ID &&
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-      process.env.GOOGLE_PRIVATE_KEY
-  );
-}
-
-async function mirrorToSheet(entry, requestId) {
-  if (!sheetsConfigured()) {
-    logger.warn('rsvp.sheet.skipped', { requestId, reason: 'google env not configured' });
-    return { mirrored: false, skipped: true };
-  }
-  try {
-    await appendRsvp(entry);
-    incr('sheetAppended');
-    logger.info('rsvp.sheet.appended', { requestId, name: entry.name });
-    return { mirrored: true };
-  } catch (err) {
-    incr('sheetFailed');
-    logger.error('rsvp.sheet.failed', { requestId, error: err.message });
-    return { mirrored: false, error: err.message };
-  }
-}
-
-/* ──────────────────────────────────────────────────────────────
  *  Album uploads — stored on local disk in DATA_DIR/uploads.
- *  (In production on Vercel, api/album/* uses Vercel Blob instead.)
  * ────────────────────────────────────────────────────────────── */
 
 const IMAGE_RE = /\.(jpe?g|png|webp|heic|gif)$/i;
@@ -135,11 +102,7 @@ function requireAdmin(req, res, next) {
 
 // Health + live metrics for monitoring.
 app.get('/api/health', (_req, res) => {
-  res.json({
-    ok: true,
-    metrics: getMetrics(),
-    email: { recipients: notifyRecipients().length },
-  });
+  res.json({ ok: true, metrics: getMetrics() });
 });
 
 app.post('/api/rsvp', async (req, res) => {
@@ -164,14 +127,7 @@ app.post('/api/rsvp', async (req, res) => {
     const all = await saveRsvp(entry);
     incr('rsvpSaved');
     logger.info('rsvp.saved', { requestId: req.id, name: entry.name, total: all.length });
-
-    // Best-effort side effects — neither blocks nor fails the RSVP.
-    const [sheet, email] = await Promise.all([
-      mirrorToSheet(entry, req.id),
-      sendRsvpNotification(entry, { requestId: req.id }),
-    ]);
-
-    res.json({ ok: true, saved: true, notified: email.sent, mirrored: sheet.mirrored });
+    res.json({ ok: true, saved: true });
   } catch (err) {
     incr('rsvpFailed');
     logger.error('rsvp.save.failed', { requestId: req.id, error: err.message });
@@ -227,31 +183,20 @@ const PORT = process.env.PORT || 4000;
 await mkdir(UPLOADS_DIR, { recursive: true });
 
 app.listen(PORT, () => {
-  const recipients = notifyRecipients();
   logger.info('server.started', {
     port: PORT,
     rsvpFile: RSVP_FILE,
     uploadsDir: UPLOADS_DIR,
     clientServed: existsSync(CLIENT_DIST),
-    emailRecipients: recipients.length,
-    emailConfigured: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
-    sheetsConfigured: sheetsConfigured(),
     albumAdminConfigured: Boolean(process.env.ADMIN_PASSWORD),
   });
   console.log(`\n🕉  Wedding API running on http://localhost:${PORT}`);
   console.log(`   • RSVPs saved to:   ${RSVP_FILE}`);
-  console.log(`   • Google Sheets:    ${sheetsConfigured() ? 'mirroring on' : 'not configured'}`);
-  console.log(
-    `   • Email notifications: ${
-      process.env.SMTP_USER && process.env.SMTP_PASS
-        ? `${recipients.length} recipient(s)`
-        : 'NOT configured (set SMTP_USER/SMTP_PASS + RSVP_NOTIFY_TO)'
-    }`
-  );
   console.log(
     `   • Album uploads:    ${
       process.env.ADMIN_PASSWORD ? 'admin password set' : 'NOT configured (set ADMIN_PASSWORD)'
     } → ${UPLOADS_DIR}`
   );
+  console.log(`   • View RSVPs:       http://localhost:${PORT}/api/rsvps`);
   console.log(`   • Health + metrics: http://localhost:${PORT}/api/health\n`);
 });
