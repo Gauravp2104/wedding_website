@@ -5,6 +5,7 @@ import Events from './components/Events';
 import Album from './components/Album';
 import RSVP from './components/RSVP';
 import Footer from './components/Footer';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <Album />
       <RSVP />
       <Footer />
+      <Analytics />
     </div>
   );
 }

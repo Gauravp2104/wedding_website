@@ -19,6 +19,8 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  /* Stop anchor jumps below the fixed nav so section tops aren't hidden. */
+  scroll-padding-top: clamp(72px, 16vw, 96px);
 }
 
 body {
@@ -46,6 +48,7 @@ a {
 .section {
   position: relative;
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -125,6 +128,7 @@ a {
 .hero {
   position: relative;
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -232,6 +236,17 @@ a {
   font-size: 0.7rem;
   opacity: 0.75;
 }
+/* Tighter hero on phones so the whole greeting fits above the fold. */
+@media (max-width: 640px) {
+  .hero {
+    justify-content: flex-start;
+    padding-top: 6rem; /* clears the ~92px fixed nav so the lamp/intro show */
+    padding-bottom: 4.5rem;
+  }
+  .hero__date {
+    margin-top: 1.2rem;
+  }
+}
 
 /* ── EVENTS ─────────────────────────────────────────────── */
 .events {
@@ -240,6 +255,7 @@ a {
 .event {
   position: relative;
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -427,11 +443,14 @@ a {
   pointer-events: none;
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.35);
 }
-@media (max-width: 640px) {
+/* On phones/tablets, drop the left-side event decorations (vertical
+   time-of-day label + corner kolams) so they don't crowd the content. */
+@media (max-width: 768px) {
   .tod-label {
-    left: 0.3rem;
-    font-size: 0.64rem;
-    letter-spacing: 0.28em;
+    display: none;
+  }
+  .event__corner {
+    display: none;
   }
 }
 
