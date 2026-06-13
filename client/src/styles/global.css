@@ -287,6 +287,40 @@ a {
   border-bottom: 1px solid rgba(231, 184, 78, 0.4);
   padding: 0.7rem 1.4rem;
 }
+.hero__cta {
+  display: inline-block;
+  margin-top: 1.8rem;
+  padding: 0.85rem 2.1rem;
+  font-family: var(--font-head);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: clamp(0.85rem, 2.6vw, 1rem);
+  color: #2a0712;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border: 1px solid #f3d488;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(231, 184, 78, 0.35);
+  animation: cta-glow 2.6s ease-in-out infinite;
+  transition: transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.hero__cta:hover {
+  transform: translateY(-2px);
+}
+.hero__cta:active {
+  transform: translateY(0) scale(0.98);
+}
+@keyframes cta-glow {
+  0%,
+  100% {
+    box-shadow: 0 8px 28px rgba(231, 184, 78, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 34px rgba(231, 184, 78, 0.6);
+  }
+}
 .hero__scroll {
   position: absolute;
   bottom: 1.6rem;

@@ -114,7 +114,7 @@ export default function Events() {
       {/* Fixed background that morphs between palettes while scrolling */}
       <motion.div
         aria-hidden="true"
-        style={{ position: 'fixed', inset: 0, zIndex: 0 }}
+        style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
         animate={{ background: gradient(palette), opacity: inView ? 1 : 0 }}
         transition={{ duration: 1.1, ease: 'easeInOut' }}
       />

@@ -105,6 +105,17 @@ export default function Hero() {
         10 &amp; 11 February 2027 · Bengaluru
       </motion.div>
 
+      <motion.a
+        className="hero__cta"
+        href="#rsvp"
+        custom={6}
+        variants={fade}
+        initial="hidden"
+        animate="show"
+      >
+        Click here to RSVP →
+      </motion.a>
+
       <motion.p
         className="hero__scroll"
         animate={{ y: [0, 8, 0], opacity: [0.5, 1, 0.5] }}
