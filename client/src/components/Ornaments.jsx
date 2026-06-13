@@ -2,9 +2,9 @@
 // temple arches, mango/paisley borders. Color is inherited via
 // currentColor so they tint to each section's palette.
 
-export function KolamCorner({ style }) {
+export function KolamCorner({ className, style }) {
   return (
-    <svg viewBox="0 0 120 120" width="120" height="120" style={style} aria-hidden="true">
+    <svg className={className} viewBox="0 0 120 120" width="120" height="120" style={style} aria-hidden="true">
       <g fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.55">
         <path d="M10 60 q25-25 50 0 q25 25 50 0" />
         <path d="M10 60 q25 25 50 0 q25-25 50 0" />
@@ -23,9 +23,9 @@ export function KolamCorner({ style }) {
 }
 
 // A peacock-feather / paisley divider used between sections.
-export function PaisleyDivider({ style }) {
+export function PaisleyDivider({ className, style }) {
   return (
-    <svg viewBox="0 0 300 40" width="220" height="30" style={style} aria-hidden="true">
+    <svg className={className} viewBox="0 0 300 40" width="220" height="30" style={style} aria-hidden="true">
       <g fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M150 6 C170 6 178 26 150 34 C122 26 130 6 150 6 Z" />
         <circle cx="150" cy="16" r="3" fill="currentColor" />
@@ -40,10 +40,10 @@ export function PaisleyDivider({ style }) {
 
 // Mangalsutra / thali — the sacred thread tied at the Muhurtham,
 // the moment the marriage is solemnised.
-export function Mangalsutra({ style }) {
+export function Mangalsutra({ className, style }) {
   const beads = Array.from({ length: 9 });
   return (
-    <svg viewBox="0 0 100 100" width="1em" height="1em" style={style} aria-hidden="true">
+    <svg className={className} viewBox="0 0 100 100" width="1em" height="1em" style={style} aria-hidden="true">
       <g fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
         {/* the U-shaped chain (quadratic Bézier P0=14,20 P1=50,84 P2=86,20) */}
         <path d="M14 20 Q50 84 86 20" />

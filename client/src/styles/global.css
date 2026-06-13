@@ -118,9 +118,69 @@ a {
   opacity: 1;
   color: var(--gold-bright);
 }
+
+/* Hamburger toggle — shown only on mobile. */
+.nav__toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  background: rgba(13, 2, 6, 0.45);
+  border: 1px solid rgba(231, 184, 78, 0.45);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.nav__toggle span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--gold-bright);
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+.nav__toggle.is-open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.nav__toggle.is-open span:nth-child(2) {
+  opacity: 0;
+}
+.nav__toggle.is-open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
 @media (max-width: 640px) {
+  .nav__toggle {
+    display: flex;
+  }
+  /* Links collapse into a dropdown panel under the bar. */
   .nav__links {
-    display: none;
+    position: absolute;
+    top: 100%;
+    right: clamp(1.2rem, 5vw, 3rem);
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1.1rem;
+    padding: 1.2rem 1.4rem;
+    background: rgba(13, 2, 6, 0.96);
+    border: 1px solid rgba(231, 184, 78, 0.4);
+    border-radius: 12px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .nav__links--open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .nav__links a {
+    font-size: 1rem;
   }
 }
 
@@ -545,6 +605,36 @@ a {
 .story__person p {
   opacity: 0.78;
   font-size: 0.98rem;
+}
+/* On phones keep Gautam · knot · Sandhya on a single row. */
+@media (max-width: 640px) {
+  .story__couple {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    margin-top: 1.8rem;
+  }
+  .story__person {
+    max-width: none;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .story__avatar {
+    width: clamp(54px, 18vw, 84px);
+    height: clamp(54px, 18vw, 84px);
+    font-size: clamp(1.5rem, 7vw, 2.4rem);
+    margin-bottom: 0.6rem;
+  }
+  .story__person h3 {
+    font-size: clamp(0.95rem, 4.2vw, 1.25rem);
+  }
+  .story__person p {
+    font-size: clamp(0.72rem, 3vw, 0.92rem);
+  }
+  .story__knot {
+    font-size: 1.3rem;
+    align-self: flex-start;
+    margin-top: clamp(1rem, 6vw, 1.7rem);
+  }
 }
 
 /* ── RSVP ───────────────────────────────────────────────── */
