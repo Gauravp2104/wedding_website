@@ -1,21 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PaisleyDivider } from './Ornaments';
-import { listAlbum, uploadPhotos } from '../lib/album';
+import { listAlbum } from '../lib/album';
 
 export default function Album() {
   const [images, setImages] = useState([]);
   const [lightbox, setLightbox] = useState(null); // index | null
-  const [adminOpen, setAdminOpen] = useState(() => {
-    try {
-      return new URLSearchParams(window.location.search).has('admin');
-    } catch {
-      return false;
-    }
-  });
-  const [password, setPassword] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     listAlbum().then(setImages).catch(() => {});
@@ -23,10 +13,7 @@ export default function Album() {
 
   const close = useCallback(() => setLightbox(null), []);
   const step = useCallback(
-    (dir) =>
-      setLightbox((i) =>
-        i === null ? i : (i + dir + images.length) % images.length
-      ),
+    (dir) => setLightbox((i) => (i === null ? i : (i + dir + images.length) % images.length)),
     [images.length]
   );
 
@@ -41,22 +28,6 @@ export default function Album() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [lightbox, close, step]);
-
-  async function onFiles(e) {
-    const files = [...e.target.files];
-    e.target.value = ''; // allow re-selecting the same file
-    if (!files.length) return;
-    setUploading(true);
-    setError('');
-    try {
-      await uploadPhotos(files, password);
-      setImages(await listAlbum());
-    } catch (err) {
-      setError(err.message || 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
-  }
 
   return (
     <section className="section album" id="album">
@@ -76,32 +47,9 @@ export default function Album() {
         </p>
         <PaisleyDivider style={{ color: 'var(--gold-bright)', margin: '0 auto 2rem' }} />
 
-        {adminOpen && (
-          <div className="album__admin">
-            <input
-              type="password"
-              placeholder="Admin password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <label className="album__upload-btn" aria-disabled={!password || uploading}>
-              {uploading ? 'Uploading…' : 'Upload photos'}
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                disabled={!password || uploading}
-                onChange={onFiles}
-                hidden
-              />
-            </label>
-            {error && <span className="album__err">{error}</span>}
-          </div>
-        )}
-
         {images.length === 0 ? (
           <p className="album__empty">
-            No photos yet — they’ll appear here as they’re added. 🪔
+            No photos yet — they’ll appear here soon. 🪔
           </p>
         ) : (
           <div className="album__grid">
@@ -119,17 +67,6 @@ export default function Album() {
             ))}
           </div>
         )}
-
-        {/* Discreet admin entry — double-click reveals the uploader. */}
-        <button
-          type="button"
-          className="album__gear"
-          aria-label="Admin upload"
-          title="Admin"
-          onDoubleClick={() => setAdminOpen(true)}
-        >
-          ⚙
-        </button>
       </motion.div>
 
       <AnimatePresence>
@@ -141,8 +78,16 @@ export default function Album() {
             exit={{ opacity: 0 }}
             onClick={close}
           >
-            <button className="album__nav album__nav--prev" aria-label="Previous"
-              onClick={(e) => { e.stopPropagation(); step(-1); }}>‹</button>
+            <button
+              className="album__nav album__nav--prev"
+              aria-label="Previous"
+              onClick={(e) => {
+                e.stopPropagation();
+                step(-1);
+              }}
+            >
+              ‹
+            </button>
             <motion.img
               key={images[lightbox].url}
               src={images[lightbox].url}
@@ -153,10 +98,26 @@ export default function Album() {
               transition={{ duration: 0.25 }}
               onClick={(e) => e.stopPropagation()}
             />
-            <button className="album__nav album__nav--next" aria-label="Next"
-              onClick={(e) => { e.stopPropagation(); step(1); }}>›</button>
-            <button className="album__close" aria-label="Close"
-              onClick={(e) => { e.stopPropagation(); close(); }}>×</button>
+            <button
+              className="album__nav album__nav--next"
+              aria-label="Next"
+              onClick={(e) => {
+                e.stopPropagation();
+                step(1);
+              }}
+            >
+              ›
+            </button>
+            <button
+              className="album__close"
+              aria-label="Close"
+              onClick={(e) => {
+                e.stopPropagation();
+                close();
+              }}
+            >
+              ×
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

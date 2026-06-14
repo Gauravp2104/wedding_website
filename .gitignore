@@ -7,3 +7,8 @@ server/data/rsvps.json
 server/data/uploads/
 .DS_Store
 *.log
+
+# Album photos live locally + in Vercel Blob, not in git (keep repo small).
+client/public/images/*
+!client/public/images/.gitkeep
+!client/public/images/README.md

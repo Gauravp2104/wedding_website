@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import multer from 'multer';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -12,18 +11,26 @@ dotenv.config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // DATA_DIR can be pointed at a mounted persistent volume in production
-// (e.g. DATA_DIR=/data) so RSVPs and photos survive restarts and redeploys.
+// (e.g. DATA_DIR=/data) so RSVPs survive restarts and redeploys.
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, 'data');
 const RSVP_FILE = join(DATA_DIR, 'rsvps.json');
-const UPLOADS_DIR = join(DATA_DIR, 'uploads');
+// Curated album images for local dev (image1…image12). In production the same
+// images live in Vercel Blob under the "images/" prefix.
+const IMAGES_DIR = join(__dirname, '..', 'client', 'public', 'images');
 const CLIENT_DIST = join(__dirname, '..', 'client', 'dist');
+
+const IMAGE_RE = /\.(jpe?g|png|webp|heic|gif)$/i;
+const imgNum = (s) => {
+  const m = String(s).match(/(\d+)/);
+  return m ? Number(m[1]) : 0;
+};
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve uploaded album photos as static files.
-app.use('/uploads', express.static(UPLOADS_DIR));
+// Serve the curated album images (also served by Vite in dev from public/).
+app.use('/images', express.static(IMAGES_DIR));
 
 /* ──────────────────────────────────────────────────────────────
  *  Observability — tag every request with an id and log its
@@ -67,36 +74,6 @@ async function saveRsvp(entry) {
   else all.push(entry);
   await writeFile(RSVP_FILE, JSON.stringify(all, null, 2), 'utf-8');
   return all;
-}
-
-/* ──────────────────────────────────────────────────────────────
- *  Album uploads — stored on local disk in DATA_DIR/uploads.
- * ────────────────────────────────────────────────────────────── */
-
-const IMAGE_RE = /\.(jpe?g|png|webp|heic|gif)$/i;
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-    filename: (_req, file, cb) => {
-      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-      cb(null, `${Date.now()}-${safe}`);
-    },
-  }),
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB per file
-  fileFilter: (_req, file, cb) => cb(null, IMAGE_RE.test(file.originalname)),
-});
-
-// Gate uploads BEFORE multer touches the body — otherwise multer writes the
-// file to disk during middleware even for an unauthorized request.
-function requireAdmin(req, res, next) {
-  const pw = req.headers['x-album-password'];
-  if (!process.env.ADMIN_PASSWORD || pw !== process.env.ADMIN_PASSWORD) {
-    incr('albumUploadFailed');
-    logger.warn('album.upload.unauthorized', { requestId: req.id });
-    return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  }
-  next();
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -145,31 +122,19 @@ app.get('/api/rsvps', async (_req, res) => {
   res.json(await readRsvps());
 });
 
-// Public album listing — read the uploads dir, newest first.
+// Public album listing — the curated images in client/public/images,
+// ordered image1 → image12. (Production lists Vercel Blob "images/" instead.)
 app.get('/api/album/list', async (_req, res) => {
   try {
-    const files = await readdir(UPLOADS_DIR).catch(() => []);
+    const files = await readdir(IMAGES_DIR).catch(() => []);
     const images = files
       .filter((f) => IMAGE_RE.test(f))
-      .sort((a, b) => (a < b ? 1 : -1)) // timestamp-prefixed → newest first
-      .map((f) => ({ url: `/uploads/${f}`, name: f }));
+      .sort((a, b) => imgNum(a) - imgNum(b))
+      .map((f) => ({ url: `/images/${f}`, name: f }));
     res.json({ images });
   } catch {
     res.json({ images: [] });
   }
-});
-
-// Admin photo upload (multipart). Password via x-album-password header.
-app.post('/api/album/upload', requireAdmin, upload.array('files', 20), async (req, res) => {
-  const files = req.files || [];
-  incr('albumUploaded', files.length);
-  const images = files.map((f) => ({
-    url: `/uploads/${f.filename}`,
-    name: f.filename,
-    uploadedAt: new Date().toISOString(),
-  }));
-  logger.info('album.uploaded', { requestId: req.id, count: images.length });
-  res.json({ ok: true, images });
 });
 
 // Serve the built React client (production). In dev, Vite serves it on :5173
@@ -183,25 +148,16 @@ if (existsSync(CLIENT_DIST)) {
 }
 
 const PORT = process.env.PORT || 4000;
-
-// Ensure the uploads dir exists before serving so admin uploads never 500.
-await mkdir(UPLOADS_DIR, { recursive: true });
-
 app.listen(PORT, () => {
   logger.info('server.started', {
     port: PORT,
     rsvpFile: RSVP_FILE,
-    uploadsDir: UPLOADS_DIR,
+    imagesDir: IMAGES_DIR,
     clientServed: existsSync(CLIENT_DIST),
-    albumAdminConfigured: Boolean(process.env.ADMIN_PASSWORD),
   });
   console.log(`\n🕉  Wedding API running on http://localhost:${PORT}`);
   console.log(`   • RSVPs saved to:   ${RSVP_FILE}`);
-  console.log(
-    `   • Album uploads:    ${
-      process.env.ADMIN_PASSWORD ? 'admin password set' : 'NOT configured (set ADMIN_PASSWORD)'
-    } → ${UPLOADS_DIR}`
-  );
+  console.log(`   • Album images:     ${IMAGES_DIR}`);
   console.log(`   • View RSVPs:       http://localhost:${PORT}/api/rsvps`);
   console.log(`   • Health + metrics: http://localhost:${PORT}/api/health\n`);
 });

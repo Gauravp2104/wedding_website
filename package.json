@@ -8,7 +8,8 @@
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",
     "dev": "concurrently -n server,client -c magenta,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
     "build": "npm --prefix client run build",
-    "start": "npm --prefix server start"
+    "start": "npm --prefix server start",
+    "upload:images": "node scripts/upload-images.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^0.27.0"
