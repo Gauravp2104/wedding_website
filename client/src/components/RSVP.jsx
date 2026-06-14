@@ -194,6 +194,9 @@ export default function RSVP() {
                   autoComplete="tel-national"
                 />
               </div>
+              <p className="field__hint">
+                Please give us your email <strong>or</strong> phone so we can reach you.
+              </p>
             </div>
 
             <div className="field">

@@ -7,6 +7,20 @@
 
 export const MAPS_URL = 'https://maps.app.goo.gl/TsDAJPRXKB5JgNLz6';
 
+// Build a one-tap "Add to Calendar" link (Google Calendar). `start`/`end` are
+// local Bengaluru times (Asia/Kolkata) in YYYYMMDDTHHMMSS form, set per event.
+export function gcalUrl(ev) {
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${ev.name} — Gautam & Sandhya`,
+    dates: `${ev.start}/${ev.end}`,
+    ctz: 'Asia/Kolkata',
+    location: `${ev.location}, Bengaluru`,
+    details: `${ev.blurb}\n\nVenue map: ${MAPS_URL}`,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export const events = [
   {
     id: 'vratham',
@@ -17,6 +31,8 @@ export const events = [
     date: 'Wednesday, 10 February 2027',
     time: '8:00 – 10:00 AM',
     period: 'AM',
+    start: '20270210T080000',
+    end: '20270210T100000',
     location: 'Shubh Royale',
     blurb:
       'The wedding opens at dawn with sacred vows. A Ganapathi puja and the tying of the kankanam — the protective thread — invoke divine blessings as the families step into two days of celebration.',
@@ -36,6 +52,8 @@ export const events = [
     date: 'Wednesday, 10 February 2027',
     time: '11:00 AM – 12:30 PM',
     period: 'AM',
+    start: '20270210T110000',
+    end: '20270210T123000',
     location: 'Shubh Royale',
     blurb:
       'The formal engagement. Elders exchange the thamboolam, the lagna patrika is read aloud, and the union of the two families is blessed before the midday lamp.',
@@ -55,6 +73,8 @@ export const events = [
     date: 'Wednesday, 10 February 2027',
     time: '6:30 – 8:30 PM',
     period: 'PM',
+    start: '20270210T183000',
+    end: '20270210T203000',
     location: 'Shubh Royale',
     blurb:
       'As the lamps are lit, the evening turns to celebration — a grand reception with a live Carnatic and light-music ensemble under a canopy of jasmine and marigold.',
@@ -74,6 +94,8 @@ export const events = [
     date: 'Thursday, 11 February 2027',
     time: '8:00 AM',
     period: 'AM',
+    start: '20270211T080000',
+    end: '20270211T090000',
     location: 'Shubh Royale',
     blurb:
       'A playful morning ritual — the groom mock-departs for Kasi before being welcomed back, followed by the Oonjal, where the couple is seated on a flower-decked swing and serenaded.',
@@ -93,6 +115,8 @@ export const events = [
     date: 'Thursday, 11 February 2027',
     time: '10:30 – 11:30 AM',
     period: 'AM',
+    start: '20270211T103000',
+    end: '20270211T113000',
     location: 'Shubh Royale',
     blurb:
       'The sacred heart of the wedding. Around the holy agni, the mangalsutra is tied and the saptapadi taken — seven steps that bind Gautam and Sandhya for a lifetime.',
@@ -112,6 +136,8 @@ export const events = [
     date: 'Thursday, 11 February 2027',
     time: '4:30 – 5:30 PM',
     period: 'PM',
+    start: '20270211T163000',
+    end: '20270211T173000',
     location: 'Shubh Royale',
     blurb:
       'A joyful, light-hearted close — turmeric and sandal are applied, games are played between the couple, and the families send them off with laughter, song and sweets.',

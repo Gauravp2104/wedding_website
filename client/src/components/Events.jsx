@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { events, MAPS_URL } from '../data/events';
+import { events, MAPS_URL, gcalUrl } from '../data/events';
 import { KolamCorner, Mangalsutra } from './Ornaments';
 
 function gradient(palette) {
@@ -53,22 +53,30 @@ function EventContent({ ev }) {
         <motion.p className="event__blurb" variants={rise} custom={5} style={{ color: palette.sub }}>
           {ev.blurb}
         </motion.p>
-        {ev.location && (
-          <motion.a
-            className="event__location"
-            variants={rise}
-            custom={6}
-            href={MAPS_URL}
+        <motion.div className="event__actions" variants={rise} custom={6}>
+          {ev.location && (
+            <a
+              className="event__action"
+              href={MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: palette.ink, borderColor: palette.accent }}
+            >
+              <span style={{ color: palette.accent }}>📍</span> Get directions
+              <small style={{ color: palette.sub }}>{ev.location}</small>
+            </a>
+          )}
+          <a
+            className="event__action"
+            href={gcalUrl(ev)}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: palette.ink, borderColor: palette.accent }}
           >
-            <span style={{ color: palette.accent }}>📍</span> {ev.location}
-            <span className="event__location-go" style={{ color: palette.accent }}>
-              Open in Maps ↗
-            </span>
-          </motion.a>
-        )}
+            <span style={{ color: palette.accent }}>📅</span> Add to calendar
+            <small style={{ color: palette.sub }}>{ev.time}</small>
+          </a>
+        </motion.div>
       </motion.div>
     </section>
   );
