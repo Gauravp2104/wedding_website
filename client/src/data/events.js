@@ -7,18 +7,50 @@
 
 export const MAPS_URL = 'https://maps.app.goo.gl/TsDAJPRXKB5JgNLz6';
 
-// Build a one-tap "Add to Calendar" link (Google Calendar). `start`/`end` are
-// local Bengaluru times (Asia/Kolkata) in YYYYMMDDTHHMMSS form, set per event.
-export function gcalUrl(ev) {
-  const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: `${ev.name} — Gautam & Sandhya`,
-    dates: `${ev.start}/${ev.end}`,
-    ctz: 'Asia/Kolkata',
-    location: `${ev.location}, Bengaluru`,
-    details: `${ev.blurb}\n\nVenue map: ${MAPS_URL}`,
-  });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+// `start`/`end` are local Bengaluru times (Asia/Kolkata, +05:30) in
+// YYYYMMDDTHHMMSS form. Convert to a UTC iCalendar stamp (…Z).
+function icsStamp(local) {
+  const Y = +local.slice(0, 4);
+  const Mo = +local.slice(4, 6);
+  const Da = +local.slice(6, 8);
+  const H = +local.slice(9, 11);
+  const Mi = +local.slice(11, 13);
+  const S = +local.slice(13, 15);
+  const u = new Date(Date.UTC(Y, Mo - 1, Da, H, Mi, S) - (5 * 60 + 30) * 60 * 1000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${u.getUTCFullYear()}${p(u.getUTCMonth() + 1)}${p(u.getUTCDate())}T${p(
+    u.getUTCHours()
+  )}${p(u.getUTCMinutes())}${p(u.getUTCSeconds())}Z`;
+}
+
+function icsEscape(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+
+// Build a single .ics file containing ALL ceremonies — one tap adds the whole
+// schedule (both days) to Apple/Google/Outlook calendars.
+export function buildIcs(list = events) {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Gautam & Sandhya//Wedding//EN',
+    'CALSCALE:GREGORIAN',
+  ];
+  for (const ev of list) {
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${ev.id}@gautam-sandhya-wedding`,
+      'DTSTAMP:20260601T000000Z',
+      `DTSTART:${icsStamp(ev.start)}`,
+      `DTEND:${icsStamp(ev.end)}`,
+      `SUMMARY:${icsEscape(`${ev.name} — Gautam & Sandhya`)}`,
+      `LOCATION:${icsEscape(`${ev.location}, Bengaluru`)}`,
+      `DESCRIPTION:${icsEscape(`${ev.blurb}\n\nVenue map: ${MAPS_URL}`)}`,
+      'END:VEVENT'
+    );
+  }
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
 }
 
 export const events = [

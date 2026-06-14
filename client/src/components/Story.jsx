@@ -1,5 +1,20 @@
 import { motion } from 'framer-motion';
 import { PaisleyDivider } from './Ornaments';
+import { events, buildIcs } from '../data/events';
+
+// One tap → downloads an .ics with all six ceremonies (both days), which the
+// phone/computer offers to add straight into the calendar.
+function addAllToCalendar() {
+  const blob = new Blob([buildIcs(events)], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'gautam-sandhya-wedding.ics';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 export default function Story() {
   return (
@@ -35,6 +50,10 @@ export default function Story() {
             <p>d/o Mr. L. Srinivasan<br />&amp; Mrs. Priya Srinivasan</p>
           </div>
         </div>
+
+        <button type="button" className="story__cal" onClick={addAllToCalendar}>
+          📅 Add all events to your calendar
+        </button>
       </motion.div>
     </section>
   );

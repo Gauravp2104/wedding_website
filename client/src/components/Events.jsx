@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { events, MAPS_URL, gcalUrl } from '../data/events';
+import { events, MAPS_URL } from '../data/events';
 import { KolamCorner, Mangalsutra } from './Ornaments';
 
 function gradient(palette) {
@@ -53,8 +53,8 @@ function EventContent({ ev }) {
         <motion.p className="event__blurb" variants={rise} custom={5} style={{ color: palette.sub }}>
           {ev.blurb}
         </motion.p>
-        <motion.div className="event__actions" variants={rise} custom={6}>
-          {ev.location && (
+        {ev.location && (
+          <motion.div className="event__actions" variants={rise} custom={6}>
             <a
               className="event__action"
               href={MAPS_URL}
@@ -65,18 +65,8 @@ function EventContent({ ev }) {
               <span style={{ color: palette.accent }}>📍</span> Get directions
               <small style={{ color: palette.sub }}>{ev.location}</small>
             </a>
-          )}
-          <a
-            className="event__action"
-            href={gcalUrl(ev)}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: palette.ink, borderColor: palette.accent }}
-          >
-            <span style={{ color: palette.accent }}>📅</span> Add to calendar
-            <small style={{ color: palette.sub }}>{ev.time}</small>
-          </a>
-        </motion.div>
+          </motion.div>
+        )}
       </motion.div>
     </section>
   );
