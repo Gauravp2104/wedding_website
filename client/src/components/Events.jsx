@@ -127,6 +127,15 @@ export default function Events() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.4, delay: 0.6 }}
       >
+        {/* Small labelled button so guests know the dots jump to the ceremonies. */}
+        <button
+          type="button"
+          className="rail__cap"
+          aria-label="Jump to the ceremonies"
+          onClick={() => refs.current[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+        >
+          Events
+        </button>
         {events.map((ev, i) => (
           <button
             key={ev.id}

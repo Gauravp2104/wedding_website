@@ -455,6 +455,27 @@ a {
   border: 1px solid rgba(231, 184, 78, 0.45);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(6px);
+  align-items: center;
+}
+/* Small "Events" cap on top of the dots — signals the dots are tappable. */
+.rail__cap {
+  writing-mode: vertical-rl;
+  font-family: var(--font-head);
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #2a0712;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.18rem;
+  margin-bottom: 0.2rem;
+  cursor: pointer;
+  animation: cta-glow 2.6s ease-in-out infinite;
+  transition: transform 0.2s ease;
+}
+.rail__cap:hover {
+  transform: scale(1.06);
 }
 .rail__dot {
   position: relative;
@@ -711,6 +732,11 @@ a {
   text-align: center;
   opacity: 0.82;
   margin: 0.4rem 0 1.8rem;
+}
+.rsvp__edit-note {
+  margin-top: 1.4rem;
+  font-size: 0.95rem;
+  opacity: 0.7;
 }
 .field {
   margin-bottom: 1.1rem;

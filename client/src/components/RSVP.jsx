@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { orderedCountries } from '../data/countries';
 
 const { top: topCountries, rest: restCountries } = orderedCountries();
+
+// Once a guest has responded we remember it so they don't submit twice.
+const RSVP_KEY = 'gs_rsvp';
+
+// Keep digits only (max 15 per E.164) and group them for easy reading.
+function formatPhone(raw) {
+  const d = raw.replace(/\D/g, '').slice(0, 15);
+  if (d.length <= 5) return d;
+  if (d.length <= 10) return `${d.slice(0, 5)} ${d.slice(5)}`;
+  return `${d.slice(0, 5)} ${d.slice(5, 10)} ${d.slice(10)}`;
+}
 
 // Which ceremonies a guest can RSVP to.
 const CEREMONY_CHOICES = [
@@ -33,6 +44,20 @@ export default function RSVP() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  // If this guest already responded (on this device), show the thank-you
+  // instead of the form so they can't accidentally submit a second time.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(RSVP_KEY) || 'null');
+      if (saved && saved.name) {
+        setForm((f) => ({ ...f, name: saved.name, attending: saved.attending || 'yes' }));
+        setStatus('done');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   async function submit(e) {
     e.preventDefault();
@@ -68,6 +93,11 @@ export default function RSVP() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong.');
+      try {
+        localStorage.setItem(RSVP_KEY, JSON.stringify({ name: form.name, attending: form.attending }));
+      } catch {
+        /* ignore */
+      }
       setStatus('done');
     } catch (err) {
       setErrorMsg(err.message || 'Could not submit. Please try again.');
@@ -93,16 +123,9 @@ export default function RSVP() {
                 ? 'Your RSVP is in — we can’t wait to celebrate with you.'
                 : 'We’ll miss you, but thank you for letting us know. 💛'}
             </p>
-            <button
-              className="submit-btn"
-              style={{ marginTop: '1.4rem', maxWidth: 220 }}
-              onClick={() => {
-                setForm(initial);
-                setStatus('idle');
-              }}
-            >
-              Submit another
-            </button>
+            <p className="rsvp__edit-note">
+              Need to change your response? Please reach out to the couple directly.
+            </p>
           </div>
         ) : (
           <form onSubmit={submit} noValidate>
@@ -164,8 +187,9 @@ export default function RSVP() {
                 <input
                   id="phone"
                   type="tel"
+                  inputMode="numeric"
                   value={form.phone}
-                  onChange={(e) => set('phone', e.target.value)}
+                  onChange={(e) => set('phone', formatPhone(e.target.value))}
                   placeholder="98765 43210"
                   autoComplete="tel-national"
                 />
