@@ -61,7 +61,10 @@ async function readRsvps() {
 async function saveRsvp(entry) {
   await mkdir(DATA_DIR, { recursive: true });
   const all = await readRsvps();
-  all.push(entry);
+  // Upsert by id so a guest editing their RSVP replaces their entry.
+  const i = entry.id ? all.findIndex((r) => r.id === entry.id) : -1;
+  if (i >= 0) all[i] = entry;
+  else all.push(entry);
   await writeFile(RSVP_FILE, JSON.stringify(all, null, 2), 'utf-8');
   return all;
 }
@@ -113,12 +116,14 @@ app.post('/api/rsvp', async (req, res) => {
   }
 
   const entry = {
+    id: req.body.id ? String(req.body.id).slice(0, 64) : undefined,
     name: String(name).slice(0, 120),
     attending: attending === 'yes' ? 'yes' : 'no',
     guests: Number(req.body.guests) || 1,
     email: (req.body.email || '').slice(0, 160),
     phone: (req.body.phone || '').slice(0, 40),
     events: Array.isArray(req.body.events) ? req.body.events.slice(0, 10) : [],
+    accommodation: req.body.accommodation === 'yes' ? 'yes' : 'no',
     message: (req.body.message || '').slice(0, 1000),
     submittedAt: new Date().toISOString(),
   };

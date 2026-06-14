@@ -4,8 +4,17 @@ import { orderedCountries } from '../data/countries';
 
 const { top: topCountries, rest: restCountries } = orderedCountries();
 
-// Once a guest has responded we remember it so they don't submit twice.
+// We remember a guest's full response (with a stable id) so it survives a
+// refresh and a re-submit edits the same entry instead of adding a new one.
 const RSVP_KEY = 'gs_rsvp';
+
+function genId() {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `r-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+}
 
 // Keep digits only (max 15 per E.164) and group them for easy reading.
 function formatPhone(raw) {
@@ -28,6 +37,7 @@ const CEREMONY_CHOICES = [
 ];
 
 const initial = {
+  id: '',
   name: '',
   email: '',
   dialCode: '+91',
@@ -35,6 +45,7 @@ const initial = {
   attending: 'yes',
   guests: 1,
   attendChoice: 'both',
+  accommodation: 'no',
   message: '',
 };
 
@@ -45,13 +56,13 @@ export default function RSVP() {
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
-  // If this guest already responded (on this device), show the thank-you
-  // instead of the form so they can't accidentally submit a second time.
+  // Restore a previously submitted response (this device) and show the
+  // thank-you. The guest can edit it; the saved form pre-fills the fields.
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(RSVP_KEY) || 'null');
       if (saved && saved.name) {
-        setForm((f) => ({ ...f, name: saved.name, attending: saved.attending || 'yes' }));
+        setForm({ ...initial, ...saved });
         setStatus('done');
       }
     } catch {
@@ -74,14 +85,17 @@ export default function RSVP() {
     setStatus('sending');
     setErrorMsg('');
 
+    const id = form.id || genId();
     const chosen = CEREMONY_CHOICES.find((c) => c.id === form.attendChoice);
     const payload = {
+      id,
       name: form.name,
       email: form.email,
       phone: form.phone ? `${form.dialCode} ${form.phone}`.trim() : '',
       attending: form.attending,
       guests: form.guests,
       events: form.attending === 'yes' ? chosen?.events ?? [] : [],
+      accommodation: form.attending === 'yes' ? form.accommodation : 'no',
       message: form.message,
     };
 
@@ -93,11 +107,13 @@ export default function RSVP() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong.');
+      const saved = { ...form, id };
       try {
-        localStorage.setItem(RSVP_KEY, JSON.stringify({ name: form.name, attending: form.attending }));
+        localStorage.setItem(RSVP_KEY, JSON.stringify(saved));
       } catch {
         /* ignore */
       }
+      setForm(saved);
       setStatus('done');
     } catch (err) {
       setErrorMsg(err.message || 'Could not submit. Please try again.');
@@ -123,9 +139,16 @@ export default function RSVP() {
                 ? 'Your RSVP is in — we can’t wait to celebrate with you.'
                 : 'We’ll miss you, but thank you for letting us know. 💛'}
             </p>
-            <p className="rsvp__edit-note">
-              Need to change your response? Please reach out to the couple directly.
-            </p>
+            <button
+              type="button"
+              className="rsvp__edit-btn"
+              onClick={() => {
+                setErrorMsg('');
+                setStatus('idle');
+              }}
+            >
+              ✎ Edit my response
+            </button>
           </div>
         ) : (
           <form onSubmit={submit} noValidate>
@@ -214,7 +237,7 @@ export default function RSVP() {
                   className={form.attending === 'no' ? 'on' : ''}
                   onClick={() => set('attending', 'no')}
                 >
-                  Regretfully decline
+                  Can’t make it
                 </button>
               </div>
             </div>
@@ -251,6 +274,26 @@ export default function RSVP() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="field">
+                  <label>Do you need accommodation?</label>
+                  <div className="attend-toggle">
+                    <button
+                      type="button"
+                      className={form.accommodation === 'yes' ? 'on' : ''}
+                      onClick={() => set('accommodation', 'yes')}
+                    >
+                      Yes, please
+                    </button>
+                    <button
+                      type="button"
+                      className={form.accommodation === 'no' ? 'on' : ''}
+                      onClick={() => set('accommodation', 'no')}
+                    >
+                      No, thanks
+                    </button>
+                  </div>
                 </div>
               </>
             )}
