@@ -1,13 +1,15 @@
 import { getMetrics } from '../lib/logger.js';
+import { isBlobConfigured, blobTokenVarNames } from '../lib/rsvp-store.js';
 
-// GET /api/health — liveness + metrics + config visibility. On Vercel the
-// counters are a per-invocation snapshot (they reset on cold starts).
+// GET /api/health — liveness + metrics + Blob config visibility.
+// blobConfigured=false means RSVPs can't be saved: connect a Blob store + redeploy.
+// blobTokenVars lists the env-var NAMES (not values) that look like a Blob token,
+// so you can tell "no store connected" (empty) from "redeploy needed / wrong name".
 export default function handler(_req, res) {
   res.json({
     ok: true,
     metrics: getMetrics(),
-    // Whether the Vercel Blob store is connected. If false in production,
-    // RSVPs can't be saved — connect a Blob store and redeploy.
-    blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+    blobConfigured: isBlobConfigured(),
+    blobTokenVars: blobTokenVarNames(),
   });
 }
