@@ -11,5 +11,7 @@ export default function handler(_req, res) {
     metrics: getMetrics(),
     blobConfigured: isBlobConfigured(),
     blobTokenVars: blobTokenVarNames(),
+    // All env-var NAMES (not values) containing "BLOB", to see what the store injected.
+    blobEnvVars: Object.keys(process.env).filter((k) => k.toUpperCase().includes('BLOB')),
   });
 }
