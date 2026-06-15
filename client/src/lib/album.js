@@ -11,3 +11,14 @@ export async function listAlbum() {
   const data = await res.json();
   return data.images || [];
 }
+
+// Pull the photo number out of "image5.jpeg" or "images/image5.jpeg".
+export function imageNumber(nameOrUrl) {
+  const m = String(nameOrUrl).match(/image(\d+)/i);
+  return m ? Number(m[1]) : 0;
+}
+
+// Map the listing to { number → image } so callers can pick specific photos.
+export function indexByNumber(images) {
+  return new Map(images.map((img) => [imageNumber(img.name || img.url), img]));
+}

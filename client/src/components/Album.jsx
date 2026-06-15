@@ -1,14 +1,23 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PaisleyDivider } from './Ornaments';
-import { listAlbum } from '../lib/album';
+import { listAlbum, indexByNumber } from '../lib/album';
+
+// Curated gallery order (4 per row). image2 & image4 are reserved for the
+// couple section, so they're intentionally left out here.
+const ALBUM_ORDER = [5, 11, 1, 7, 8, 9, 3, 12, 10, 6];
 
 export default function Album() {
   const [images, setImages] = useState([]);
   const [lightbox, setLightbox] = useState(null); // index | null
 
   useEffect(() => {
-    listAlbum().then(setImages).catch(() => {});
+    listAlbum()
+      .then((all) => {
+        const byNum = indexByNumber(all);
+        setImages(ALBUM_ORDER.map((n) => byNum.get(n)).filter(Boolean));
+      })
+      .catch(() => {});
   }, []);
 
   const close = useCallback(() => setLightbox(null), []);
