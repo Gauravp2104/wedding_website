@@ -17,7 +17,7 @@ export default function Album() {
         const byNum = indexByNumber(all);
         setImages(ALBUM_ORDER.map((n) => byNum.get(n)).filter(Boolean));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const close = useCallback(() => setLightbox(null), []);
@@ -52,7 +52,7 @@ export default function Album() {
         </p>
         <h2 className="album__title">Our Album</h2>
         <p className="album__text">
-          Moments from our journey together — and from the celebration as it unfolds.
+          Moments from the engagement ceremony in Bengaluru (4th June 2026).
         </p>
         <PaisleyDivider style={{ color: 'var(--gold-bright)', margin: '0 auto 2rem' }} />
 
