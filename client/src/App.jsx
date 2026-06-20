@@ -5,6 +5,7 @@ import Events from './components/Events';
 import Album from './components/Album';
 import RSVP from './components/RSVP';
 import Footer from './components/Footer';
+import AudioToggle from './components/AudioToggle';
 import { Analytics } from '@vercel/analytics/react';
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
       <Album />
       <RSVP />
       <Footer />
+      <AudioToggle />
       <Analytics />
     </div>
   );
