@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 // South Indian classical violin that begins on the visitor's first interaction
 // (browsers block audio until a user gesture) and can be muted at any time.
 // Drop your track at client/public/audio/violin.mp3 — see the README there.
-const AUDIO_SRC = '/audio/violin.mp3';
+const AUDIO_SRC = '/audio/music.mp3';
 const PREF_KEY = 'gs_audio'; // 'on' | 'off' — remembered across visits
-const TARGET_VOLUME = 0.35; // soft background level
+const TARGET_VOLUME = 0.3; // soft background level
 const FADE_MS = 1400;
 
 export default function AudioToggle() {
@@ -34,7 +34,7 @@ export default function AudioToggle() {
 
   async function start() {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio) return false;
     try {
       audio.volume = 0;
       await audio.play(); // must run inside the user gesture for iOS/Safari
@@ -45,9 +45,11 @@ export default function AudioToggle() {
         /* ignore */
       }
       fadeTo(TARGET_VOLUME);
+      return true;
     } catch {
       // Gesture/autoplay blocked or file missing — leave it off.
       setPlaying(false);
+      return false;
     }
   }
 
@@ -63,7 +65,9 @@ export default function AudioToggle() {
 
   const toggle = () => (playing ? stop() : start());
 
-  // Begin on the first tap/click/key, unless the guest muted it before.
+  // Begin on the first interaction — a click/tap anywhere, a key, or a scroll —
+  // unless the guest muted it before. A bare scroll doesn't always count as the
+  // gesture browsers require, so we keep listening until playback truly starts.
   useEffect(() => {
     let pref = null;
     try {
@@ -73,16 +77,13 @@ export default function AudioToggle() {
     }
     if (pref === 'off') return undefined;
 
-    const onFirst = () => {
-      start();
-      cleanup();
+    const triggers = ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'];
+    const onFirst = async () => {
+      const ok = await start();
+      if (ok) cleanup();
     };
-    const cleanup = () => {
-      window.removeEventListener('pointerdown', onFirst);
-      window.removeEventListener('keydown', onFirst);
-    };
-    window.addEventListener('pointerdown', onFirst);
-    window.addEventListener('keydown', onFirst);
+    const cleanup = () => triggers.forEach((t) => window.removeEventListener(t, onFirst));
+    triggers.forEach((t) => window.addEventListener(t, onFirst, { passive: true }));
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -1,11 +1,12 @@
 # Background music
 
-Drop your track here as **`violin.mp3`**:
+Drop your track here as **`music.mp3`**:
 
-    client/public/audio/violin.mp3
+    client/public/audio/music.mp3
 
 The floating ♫ button (bottom-right of the site) plays it on the visitor's
-first tap/click, loops it softly, and remembers if they mute it.
+first interaction (click/tap/scroll anywhere), loops it softly, and remembers
+if they mute it.
 
 ## Picking a file
 
