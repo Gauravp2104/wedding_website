@@ -24,6 +24,13 @@ function formatPhone(raw) {
   return `${d.slice(0, 5)} ${d.slice(5, 10)} ${d.slice(10)}`;
 }
 
+// Hotel nights a guest can request when they need accommodation.
+const STAY_CHOICES = [
+  { id: 'day1', label: 'Day 1', meta: '9–10 February' },
+  { id: 'day2', label: 'Day 2', meta: '10–11 February' },
+  { id: 'both', label: 'Both days', meta: '9–11 February' },
+];
+
 // Which ceremonies a guest can RSVP to.
 const CEREMONY_CHOICES = [
   { id: 'reception', label: '🌅 Reception', meta: 'Day 1 · 10 Feb 2027', events: ['Reception (Day 1, 10 Feb 2027)'] },
@@ -46,6 +53,7 @@ const initial = {
   guests: 1,
   attendChoice: 'both',
   accommodation: 'no',
+  accommodationDays: 'both',
   message: '',
 };
 
@@ -96,6 +104,10 @@ export default function RSVP() {
       guests: form.guests,
       events: form.attending === 'yes' ? chosen?.events ?? [] : [],
       accommodation: form.attending === 'yes' ? form.accommodation : 'no',
+      accommodationDays:
+        form.attending === 'yes' && form.accommodation === 'yes'
+          ? STAY_CHOICES.find((s) => s.id === form.accommodationDays)?.meta ?? ''
+          : '',
       message: form.message,
     };
 
@@ -295,6 +307,28 @@ export default function RSVP() {
                     </button>
                   </div>
                 </div>
+
+                {form.accommodation === 'yes' && (
+                  <div className="field">
+                    <label>Which days do you need a room?</label>
+                    <div className="choice-grid">
+                      {STAY_CHOICES.map((s) => (
+                        <button
+                          type="button"
+                          key={s.id}
+                          className={`choice ${form.accommodationDays === s.id ? 'on' : ''}`}
+                          onClick={() => set('accommodationDays', s.id)}
+                        >
+                          <span className="choice__label">{s.label}</span>
+                          <span className="choice__meta">{s.meta}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="field__hint">
+                      Hotel check-in starts at 14:00 hours and checkout at 12:00 hours.
+                    </p>
+                  </div>
+                )}
               </>
             )}
 
@@ -321,6 +355,11 @@ export default function RSVP() {
           </form>
         )}
       </motion.div>
+
+      <p className="rsvp__gift">
+        Your presence on our special day is the only thing we request — no physical
+        gifts please!
+      </p>
     </section>
   );
 }

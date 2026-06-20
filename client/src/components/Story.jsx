@@ -42,13 +42,10 @@ export default function Story() {
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.9 }}
       >
-        <p className="eyebrow" style={{ color: 'var(--gold-bright)' }}>
-          வாழ்க வளமுடன்
-        </p>
         <h2 className="story__title">The Couple</h2>
         <p className="story__text">
           Two families, one celebration. With the blessings of our elders and the warmth of
-          tradition, we invite you to share in two days of music, ritual and joy as Gautam and
+          tradition, we seek your gracious presence on our special day as Gautam and
           Sandhya begin their journey together.
         </p>
         <PaisleyDivider style={{ color: 'var(--gold-bright)', margin: '0 auto' }} />

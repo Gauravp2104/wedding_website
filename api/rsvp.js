@@ -25,6 +25,7 @@ export default async function handler(req, res) {
     phone: (req.body.phone || '').slice(0, 40),
     events: Array.isArray(req.body.events) ? req.body.events.slice(0, 10) : [],
     accommodation: req.body.accommodation === 'yes' ? 'yes' : 'no',
+    accommodationDays: (req.body.accommodationDays || '').slice(0, 40),
     message: (req.body.message || '').slice(0, 1000),
     submittedAt: new Date().toISOString(),
   };
