@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import { logger, incr, getMetrics, newRequestId } from '../lib/logger.js';
+import { buildRsvpEntry } from '../lib/rsvp-entry.js';
 
 dotenv.config();
 
@@ -92,19 +93,7 @@ app.post('/api/rsvp', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Name and attendance are required.' });
   }
 
-  const entry = {
-    id: req.body.id ? String(req.body.id).slice(0, 64) : undefined,
-    name: String(name).slice(0, 120),
-    attending: attending === 'yes' ? 'yes' : 'no',
-    guests: Number(req.body.guests) || 1,
-    email: (req.body.email || '').slice(0, 160),
-    phone: (req.body.phone || '').slice(0, 40),
-    events: Array.isArray(req.body.events) ? req.body.events.slice(0, 10) : [],
-    accommodation: req.body.accommodation === 'yes' ? 'yes' : 'no',
-    accommodationDays: (req.body.accommodationDays || '').slice(0, 40),
-    message: (req.body.message || '').slice(0, 1000),
-    submittedAt: new Date().toISOString(),
-  };
+  const entry = buildRsvpEntry(req.body);
 
   try {
     const all = await saveRsvp(entry);

@@ -1,4 +1,5 @@
 import { appendRsvp } from '../lib/rsvp-store.js';
+import { buildRsvpEntry } from '../lib/rsvp-entry.js';
 import { incr, logger, newRequestId } from '../lib/logger.js';
 
 // POST /api/rsvp — append one RSVP to the rsvps.json blob (Vercel deployment).
@@ -16,19 +17,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'Name and attendance are required.' });
   }
 
-  const entry = {
-    id: req.body.id ? String(req.body.id).slice(0, 64) : undefined,
-    name: String(name).slice(0, 120),
-    attending: attending === 'yes' ? 'yes' : 'no',
-    guests: Number(req.body.guests) || 1,
-    email: (req.body.email || '').slice(0, 160),
-    phone: (req.body.phone || '').slice(0, 40),
-    events: Array.isArray(req.body.events) ? req.body.events.slice(0, 10) : [],
-    accommodation: req.body.accommodation === 'yes' ? 'yes' : 'no',
-    accommodationDays: (req.body.accommodationDays || '').slice(0, 40),
-    message: (req.body.message || '').slice(0, 1000),
-    submittedAt: new Date().toISOString(),
-  };
+  const entry = buildRsvpEntry(req.body);
 
   try {
     const all = await appendRsvp(entry);

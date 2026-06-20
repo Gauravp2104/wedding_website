@@ -33,14 +33,9 @@ const STAY_CHOICES = [
 
 // Which ceremonies a guest can RSVP to.
 const CEREMONY_CHOICES = [
-  { id: 'reception', label: '🌅 Reception', meta: 'Day 1 · 10 Feb 2027', events: ['Reception (Day 1, 10 Feb 2027)'] },
-  { id: 'muhurtham', label: '🔥 Muhurtham', meta: 'Day 2 · 11 Feb 2027', events: ['Muhurtham (Day 2, 11 Feb 2027)'] },
-  {
-    id: 'both',
-    label: '🪔 Both days',
-    meta: '10 & 11 Feb 2027',
-    events: ['Reception (Day 1, 10 Feb 2027)', 'Muhurtham (Day 2, 11 Feb 2027)'],
-  },
+  { id: 'reception', label: '🌅 Reception', meta: 'Day 1 · 10 Feb 2027' },
+  { id: 'muhurtham', label: '🔥 Muhurtham', meta: 'Day 2 · 11 Feb 2027' },
+  { id: 'both', label: '🪔 Both days', meta: '10 & 11 Feb 2027' },
 ];
 
 const initial = {
@@ -94,20 +89,19 @@ export default function RSVP() {
     setErrorMsg('');
 
     const id = form.id || genId();
-    const chosen = CEREMONY_CHOICES.find((c) => c.id === form.attendChoice);
+    // Send the raw choice ids; the server expands them into the nested
+    // yes/no structure stored in rsvps.json.
     const payload = {
       id,
       name: form.name,
       email: form.email,
       phone: form.phone ? `${form.dialCode} ${form.phone}`.trim() : '',
       attending: form.attending,
+      attendChoice: form.attending === 'yes' ? form.attendChoice : '',
       guests: form.guests,
-      events: form.attending === 'yes' ? chosen?.events ?? [] : [],
       accommodation: form.attending === 'yes' ? form.accommodation : 'no',
-      accommodationDays:
-        form.attending === 'yes' && form.accommodation === 'yes'
-          ? STAY_CHOICES.find((s) => s.id === form.accommodationDays)?.meta ?? ''
-          : '',
+      accommodationChoice:
+        form.attending === 'yes' && form.accommodation === 'yes' ? form.accommodationDays : '',
       message: form.message,
     };
 
@@ -184,7 +178,9 @@ export default function RSVP() {
             </div>
 
             <div className="field">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">
+                Email <span className="field__optional">(optional)</span>
+              </label>
               <input
                 id="email"
                 type="email"

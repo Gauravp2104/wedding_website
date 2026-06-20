@@ -824,6 +824,12 @@ a {
   margin-bottom: 0.4rem;
   opacity: 0.85;
 }
+.field__optional {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-style: italic;
+  opacity: 0.6;
+}
 .field__hint {
   margin-top: 0.5rem;
   font-size: 0.92rem;
