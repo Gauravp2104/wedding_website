@@ -98,7 +98,7 @@ export default function Hero() {
       </div>
 
       <motion.p className="hero__join" custom={4} variants={fade} initial="hidden" animate="show">
-        invite you to share in their happily ever after
+        seek your gracious presence on our special day
       </motion.p>
 
       <motion.div className="hero__date" custom={5} variants={fade} initial="hidden" animate="show">

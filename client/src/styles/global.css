@@ -840,6 +840,29 @@ a {
   font-size: 1.05rem;
   transition: border 0.2s, background 0.2s;
 }
+/* Native selects render in the OS light theme on Windows by default, which
+   hides our cream text and makes the dropdown white-on-white. Force a dark
+   control + explicit option colours so they stay readable everywhere. */
+.field select {
+  color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* Custom caret for the full-width selects (guests, etc.) so the native
+   Windows arrow doesn't clip the value. */
+.field select:not(.phone-code) {
+  padding-right: 2.4rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--gold-bright) 50%),
+    linear-gradient(135deg, var(--gold-bright) 50%, transparent 50%);
+  background-position: calc(100% - 1.1rem) calc(50% - 1px), calc(100% - 0.75rem) calc(50% - 1px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+.field select option,
+.field select optgroup {
+  background: #2a0712;
+  color: #fdf7e7;
+}
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
@@ -888,12 +911,13 @@ a {
   gap: 0.6rem;
 }
 .phone-code {
-  flex: 0 0 64px;
-  width: 64px;
-  max-width: 64px;
+  flex: 0 0 74px;
+  width: 74px;
+  max-width: 74px;
   box-sizing: border-box;
-  padding-left: 0.4rem;
-  padding-right: 0.2rem;
+  padding-left: 0.5rem;
+  padding-right: 0.4rem;
+  text-align: center;
   text-overflow: ellipsis;
   /* native select dropdown renders in dark UA colors; keep text readable */
   color-scheme: dark;
