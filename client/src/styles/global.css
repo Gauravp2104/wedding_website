@@ -658,6 +658,7 @@ a {
   line-height: 1.5;
 }
 .story__avatar {
+  position: relative;
   width: 150px;
   height: 150px;
   border-radius: 50%;
@@ -671,6 +672,9 @@ a {
   overflow: hidden;
 }
 .story__avatar img {
+  /* Absolutely fill the circle so the photo covers it edge-to-edge, no gaps. */
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border-radius: 50%;
