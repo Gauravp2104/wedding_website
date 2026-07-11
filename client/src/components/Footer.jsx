@@ -2,6 +2,8 @@
 const CONTACTS = [
   { name: 'Uma', tel: '+919606647106' },
   { name: 'Prakash', tel: '+919900824684' },
+  { name: 'Priya', tel: '+919619304464' },
+  { name: 'Srinivasan', tel: '+919820964810' },
 ];
 
 export default function Footer() {
