@@ -12,3 +12,6 @@ server/data/uploads/
 client/public/images/*
 !client/public/images/.gitkeep
 !client/public/images/README.md
+
+# Event ceremony pictures: same treatment — local copy + Vercel Blob, not in git.
+client/public/pictures/*

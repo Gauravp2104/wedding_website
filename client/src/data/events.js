@@ -7,6 +7,10 @@
 
 export const MAPS_URL = 'https://maps.app.goo.gl/TsDAJPRXKB5JgNLz6';
 
+// Per-ceremony caricature backgrounds live in Vercel Blob (not in git —
+// see scripts/upload-event-pictures.mjs), same pattern as the photo album.
+const PICTURES_BASE = 'https://cma6ueb3wdf2jbmh.public.blob.vercel-storage.com/pictures/';
+
 // `start`/`end` are local Bengaluru times (Asia/Kolkata, +05:30) in
 // YYYYMMDDTHHMMSS form. Convert to a UTC iCalendar stamp (…Z).
 function icsStamp(local) {
@@ -68,6 +72,7 @@ export const events = [
     location: 'Shubh Royale',
     blurb:
       'The wedding opens at dawn with sacred vows. A Ganapathi puja and the tying of the kankanam — the protective thread — invoke divine blessings as the families step into two days of celebration.',
+    image: `${PICTURES_BASE}vratham.jpeg`,
     palette: {
       bg: ['#fdf7e7', '#f7e3a8', '#f3cf73'],
       accent: '#b8860b',
@@ -89,6 +94,7 @@ export const events = [
     location: 'Shubh Royale',
     blurb:
       'The formal engagement. Elders exchange the thamboolam, the lagna patrika is read aloud, and the union of the two families is blessed before the midday lamp.',
+    image: `${PICTURES_BASE}nitchayathartham.jpeg`,
     palette: {
       bg: ['#fff2d0', '#f7c948', '#e8951f'],
       accent: '#9c3b0a',
@@ -110,6 +116,7 @@ export const events = [
     location: 'Shubh Royale',
     blurb:
       'As the lamps are lit, the evening turns to celebration — a grand reception with a live Carnatic and light-music ensemble under a canopy of jasmine and marigold.',
+    image: `${PICTURES_BASE}reception-musical.jpeg`,
     palette: {
       bg: ['#3a0d1a', '#5e1226', '#7a1f2b'],
       accent: '#e7b84e',
@@ -131,6 +138,7 @@ export const events = [
     location: 'Shubh Royale',
     blurb:
       'A playful morning ritual — the groom mock-departs for Kasi before being welcomed back, followed by the Oonjal, where the couple is seated on a flower-decked swing and serenaded.',
+    image: `${PICTURES_BASE}kasi-yatra-oonjal.jpeg`,
     palette: {
       bg: ['#f1f7e6', '#cfe3a3', '#a7c66b'],
       accent: '#4f7a1f',
@@ -152,6 +160,7 @@ export const events = [
     location: 'Shubh Royale',
     blurb:
       'The sacred heart of the wedding. Around the holy agni, the mangalsutra is tied and the saptapadi taken — seven steps that bind Gautam and Sandhya for a lifetime.',
+    image: `${PICTURES_BASE}muhurtham.jpg`,
     palette: {
       bg: ['#fff8e0', '#f3cf73', '#e7b23a'],
       accent: '#a8430f',
@@ -173,6 +182,7 @@ export const events = [
     location: 'Shubh Royale',
     blurb:
       'A joyful, light-hearted close — turmeric and sandal are applied, games are played between the couple, and the families send them off with laughter, song and sweets.',
+    image: `${PICTURES_BASE}nalungu.jpeg`,
     palette: {
       bg: ['#4a1408', '#7c2a12', '#a8431b'],
       accent: '#ffd27a',

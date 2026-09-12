@@ -9,7 +9,8 @@
     "dev": "concurrently -n server,client -c magenta,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
     "build": "npm --prefix client run build",
     "start": "npm --prefix server start",
-    "upload:images": "node scripts/upload-images.mjs"
+    "upload:images": "node scripts/upload-images.mjs",
+    "upload:pictures": "node scripts/upload-event-pictures.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^0.27.0"

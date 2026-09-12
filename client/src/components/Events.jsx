@@ -3,9 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { events, MAPS_URL } from '../data/events';
 import { KolamCorner, Mangalsutra } from './Ornaments';
 
-function gradient(palette) {
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// A tinted scrim in the event's own palette, laid over its background
+// illustration so the artwork reads as "shaded" colour rather than a
+// flat photo — keeps text legible while still showing the caricature.
+function shade(palette, alpha) {
   const [a, b, c] = palette.bg;
-  return `radial-gradient(circle at 50% 0%, ${a} 0%, ${b} 48%, ${c} 100%)`;
+  const rgba = (hex, mul) => {
+    const [r, g, bl] = hexToRgb(hex);
+    return `rgba(${r}, ${g}, ${bl}, ${Math.min(1, alpha * mul).toFixed(2)})`;
+  };
+  return `radial-gradient(circle at 50% 0%, ${rgba(a, 1)} 0%, ${rgba(b, 1.05)} 48%, ${rgba(c, 1.1)} 100%)`;
 }
 
 function EventContent({ ev }) {
@@ -109,13 +122,34 @@ export default function Events() {
 
   return (
     <div className="events" id="events" ref={containerRef}>
-      {/* Fixed background that morphs between palettes while scrolling */}
-      <motion.div
+      {/* Fixed background: each ceremony's caricature artwork, cross-fading
+          as guests scroll, with a palette-tinted scrim shading it so the
+          text above stays legible. */}
+      <div
         aria-hidden="true"
-        style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
-        animate={{ background: gradient(palette), opacity: inView ? 1 : 0 }}
-        transition={{ duration: 1.1, ease: 'easeInOut' }}
-      />
+        style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: inView ? 1 : 0, transition: 'opacity 1.1s ease-in-out' }}
+      >
+        {events.map((ev, i) => (
+          <motion.div
+            key={ev.id}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `url(${ev.image})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+            animate={{ opacity: i === active ? 1 : 0 }}
+            transition={{ duration: 1.1, ease: 'easeInOut' }}
+          />
+        ))}
+        <motion.div
+          className="events__scrim"
+          style={{ position: 'absolute', inset: 0 }}
+          animate={{ background: shade(palette, 0.82) }}
+          transition={{ duration: 1.1, ease: 'easeInOut' }}
+        />
+      </div>
 
       {/* Scroll-progress rail — always present (even over the hero/story),
           so guests can jump to any ceremony from anywhere on the page. */}
