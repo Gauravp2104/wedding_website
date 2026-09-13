@@ -213,9 +213,6 @@ export default function RSVP() {
                 ? 'Your RSVP is in — we can’t wait to celebrate with you.'
                 : 'We’ll miss you, but thank you for letting us know. 💛'}
             </p>
-            <p style={{ opacity: 0.7, fontSize: '0.92em' }}>
-              You can come back and edit your response any time before the big day.
-            </p>
             <button
               type="button"
               className="rsvp__edit-btn"
