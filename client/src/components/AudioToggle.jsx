@@ -65,9 +65,13 @@ export default function AudioToggle() {
 
   const toggle = () => (playing ? stop() : start());
 
-  // Begin on the first interaction — a click/tap anywhere, a key, or a scroll —
-  // unless the guest muted it before. A bare scroll doesn't always count as the
-  // gesture browsers require, so we keep listening until playback truly starts.
+  // Music should be on from the moment the site loads, on phone and laptop
+  // alike — unless the guest muted it on a previous visit. Try to start it
+  // immediately; browsers that allow unmuted autoplay let it play right
+  // away. Browsers that don't (iOS Safari, and stricter Chrome/Firefox
+  // policies) reject that attempt, so we keep listening for the guest's
+  // very first interaction — a tap, click, key, or scroll — and start it
+  // then instead, which is as close to "always on" as those policies allow.
   useEffect(() => {
     let pref = null;
     try {
@@ -84,6 +88,11 @@ export default function AudioToggle() {
     };
     const cleanup = () => triggers.forEach((t) => window.removeEventListener(t, onFirst));
     triggers.forEach((t) => window.addEventListener(t, onFirst, { passive: true }));
+
+    start().then((ok) => {
+      if (ok) cleanup();
+    });
+
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

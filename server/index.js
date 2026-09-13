@@ -8,6 +8,7 @@ import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import { logger, incr, getMetrics, newRequestId } from '../lib/logger.js';
 import { buildRsvpEntry } from '../lib/rsvp-entry.js';
 import { sendRsvpConfirmationEmail } from '../lib/rsvp-mailer.js';
+import { sendRsvpConfirmationSms } from '../lib/rsvp-sms.js';
 import { resolveOrigin } from '../lib/site-url.js';
 
 dotenv.config();
@@ -89,7 +90,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Fetch one guest's saved RSVP by id — used by the "edit my RSVP" link sent
-// in their confirmation email, so it works from any device.
+// in their confirmation text/email, so it works from any device.
 app.get('/api/rsvp', async (req, res) => {
   const id = String(req.query.id || '');
   if (!id) return res.status(400).json({ ok: false, error: 'Missing id.' });
@@ -101,9 +102,9 @@ app.get('/api/rsvp', async (req, res) => {
 
 app.post('/api/rsvp', async (req, res) => {
   incr('rsvpReceived');
-  const { name, attending, email } = req.body || {};
-  if (!name || !attending || !email) {
-    return res.status(400).json({ ok: false, error: 'Name, email, and attendance are required.' });
+  const { name, attending, phone } = req.body || {};
+  if (!name || !attending || !phone) {
+    return res.status(400).json({ ok: false, error: 'Name, phone, and attendance are required.' });
   }
 
   const entry = buildRsvpEntry(req.body);
@@ -113,7 +114,11 @@ app.post('/api/rsvp', async (req, res) => {
     incr('rsvpSaved');
     logger.info('rsvp.saved', { requestId: req.id, name: entry.name, total: all.length });
 
-    await sendRsvpConfirmationEmail(entry, { origin: resolveOrigin(req), requestId: req.id });
+    const origin = resolveOrigin(req);
+    await Promise.all([
+      sendRsvpConfirmationSms(entry, { origin, requestId: req.id }),
+      sendRsvpConfirmationEmail(entry, { origin, requestId: req.id }),
+    ]);
 
     res.json({ ok: true, saved: true });
   } catch (err) {

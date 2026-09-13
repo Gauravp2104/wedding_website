@@ -2,12 +2,13 @@ import { appendRsvp, readRsvps } from '../lib/rsvp-store.js';
 import { buildRsvpEntry } from '../lib/rsvp-entry.js';
 import { incr, logger, newRequestId } from '../lib/logger.js';
 import { sendRsvpConfirmationEmail } from '../lib/rsvp-mailer.js';
+import { sendRsvpConfirmationSms } from '../lib/rsvp-sms.js';
 import { resolveOrigin } from '../lib/site-url.js';
 
 // GET /api/rsvp?id=... — fetch one guest's saved RSVP, so an "edit my RSVP"
-// link (from their confirmation email) can pre-fill the form on any device.
-// POST /api/rsvp — append/upsert one RSVP to the rsvps.json blob, then email
-// the guest a confirmation (Vercel deployment).
+// link (from their confirmation text) can pre-fill the form on any device.
+// POST /api/rsvp — append/upsert one RSVP to the rsvps.json blob, then text
+// (and, if given, email) the guest a confirmation (Vercel deployment).
 export default async function handler(req, res) {
   const requestId = newRequestId();
   res.setHeader('X-Request-Id', requestId);
@@ -31,9 +32,9 @@ export default async function handler(req, res) {
   }
 
   incr('rsvpReceived');
-  const { name, attending, email } = req.body || {};
-  if (!name || !attending || !email) {
-    return res.status(400).json({ ok: false, error: 'Name, email, and attendance are required.' });
+  const { name, attending, phone } = req.body || {};
+  if (!name || !attending || !phone) {
+    return res.status(400).json({ ok: false, error: 'Name, phone, and attendance are required.' });
   }
 
   const entry = buildRsvpEntry(req.body);
@@ -43,7 +44,11 @@ export default async function handler(req, res) {
     incr('rsvpSaved');
     logger.info('rsvp.saved', { requestId, name: entry.name, total: all.length });
 
-    await sendRsvpConfirmationEmail(entry, { origin: resolveOrigin(req), requestId });
+    const origin = resolveOrigin(req);
+    await Promise.all([
+      sendRsvpConfirmationSms(entry, { origin, requestId }),
+      sendRsvpConfirmationEmail(entry, { origin, requestId }),
+    ]);
 
     res.json({ ok: true, saved: true });
   } catch (err) {

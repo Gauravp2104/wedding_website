@@ -393,6 +393,21 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 24px 70px -24px rgba(0, 0, 0, 0.55);
 }
+@media (min-width: 769px) {
+  /* Reception's photo is portrait — mismatched to this wide frame, so
+     "contain" would letterbox with the border visibly framing empty gaps
+     either side. Give it a portrait-friendly frame of its own and fill it
+     (cropping only a little) so the border hugs the photo with no gap. */
+  .event__photo--fill {
+    aspect-ratio: 4 / 5;
+  }
+  .event__photo--fill img {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+  }
+}
 @media (max-width: 768px) {
   .event__row {
     flex-direction: column;
@@ -402,6 +417,16 @@ a {
   .event__inner {
     max-width: 100%;
     text-align: center;
+  }
+  /* In the desktop row, flex-basis (480px / 360px below) sizes each
+     column's *width*. Once .event__row stacks into a column here, that
+     same flex-basis would size their *height* instead — forcing the photo
+     box taller than its own picture and leaving the border visibly framing
+     empty space above it. Reset to content-based sizing now that we're
+     stacked. */
+  .event__inner,
+  .event__photo {
+    flex: 0 1 auto;
   }
   .event__blurb {
     margin: 0 auto;
@@ -593,15 +618,24 @@ a {
 }
 @media (max-width: 640px) {
   /* Keep the circle buttons on mobile so guests can tap to jump to any
-     ceremony; just tuck them tighter to the edge and drop the hover labels. */
+     ceremony, but noticeably smaller than the laptop rail so it stays out
+     of the way of the content; drop the hover labels (no hover on touch). */
   .rail {
-    right: 0.4rem;
-    gap: 0.7rem;
-    padding: 0.6rem 0.4rem;
+    right: 0.3rem;
+    gap: 0.45rem;
+    padding: 0.45rem 0.3rem;
+  }
+  .rail__cap {
+    font-size: 0.48rem;
+    padding: 0.35rem 0.14rem;
   }
   .rail__dot {
-    width: 12px;
-    height: 12px;
+    width: 8px;
+    height: 8px;
+    border-width: 1.5px;
+  }
+  .rail__dot--on {
+    transform: scale(1.4);
   }
   .rail__label {
     display: none;

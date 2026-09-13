@@ -144,12 +144,12 @@ export default function RSVP() {
       setStatus('error');
       return;
     }
-    if (!form.email.trim()) {
-      setErrorMsg('Please share your email so we can send your RSVP confirmation.');
+    if (!form.phone.trim()) {
+      setErrorMsg('Please share your phone number so we can send your RSVP confirmation.');
       setStatus('error');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       setErrorMsg('Please enter a valid email address.');
       setStatus('error');
       return;
@@ -215,8 +215,8 @@ export default function RSVP() {
                 : 'We’ll miss you, but thank you for letting us know. 💛'}
             </p>
             <p style={{ opacity: 0.7, fontSize: '0.92em' }}>
-              A confirmation email is on its way to <strong>{form.email}</strong> with calendar
-              links for every ceremony{form.attending !== 'yes' && ' and a link to edit your RSVP'}.
+              A confirmation text is on its way to <strong>{form.dialCode} {form.phone}</strong>
+              {form.email ? ' (and to your email)' : ''} with a link to edit your RSVP any time.
             </p>
             <button
               type="button"
@@ -251,25 +251,24 @@ export default function RSVP() {
             </div>
 
             <div className="field">
-              <label htmlFor="email">Email *</label>
+              <label htmlFor="email">
+                Email <span className="field__optional">(optional)</span>
+              </label>
               <input
                 id="email"
                 type="email"
-                required
                 value={form.email}
                 onChange={(e) => set('email', e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
               />
               <p className="field__hint">
-                We’ll send your RSVP confirmation and calendar links here.
+                If you'd also like calendar links by email, leave this in.
               </p>
             </div>
 
             <div className="field">
-              <label htmlFor="phone">
-                Phone <span className="field__optional">(optional)</span>
-              </label>
+              <label htmlFor="phone">Phone *</label>
               <div className="phone-row">
                 <select
                   className="phone-code"
@@ -296,6 +295,7 @@ export default function RSVP() {
                   id="phone"
                   type="tel"
                   inputMode="numeric"
+                  required
                   value={form.phone}
                   onChange={(e) => set('phone', formatPhone(e.target.value))}
                   placeholder="98765 43210"

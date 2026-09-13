@@ -16,9 +16,10 @@ on the server.
   `/api/health` endpoint exposing live counters
 
 The main service used in production is **Vercel Blob** (free tier, part of your Vercel
-project — no separate account needed). RSVP confirmation emails are sent over **SMTP**
-(e.g. a free Gmail account + app password) — optional, but recommended so guests get a
-confirmation with calendar links.
+project — no separate account needed). RSVP confirmations are texted via **Twilio**
+(the guaranteed channel — phone is required on the form) and, if a guest leaves an
+email too, also sent over **SMTP** (e.g. a free Gmail account + app password) with
+richer calendar links. Both are optional to configure; RSVPs still save without them.
 
 ## Quick start
 
@@ -35,22 +36,27 @@ The Vite dev server proxies `/api/*` calls to the Express backend on port 4000.
 ## RSVPs
 
 Every RSVP is appended to a **`rsvps.json`** file — one object per guest with
-`name, attending, guests, email, phone, events, message, submittedAt`. Email is
-required (used to send the confirmation below); a guest can resubmit to edit their
-RSVP (same `id`) any time, including a change of mind between attending / not.
+`name, attending, guests, email, phone, events, message, submittedAt`. Phone is
+required (used to send the confirmation text below); email is optional. A guest can
+resubmit to edit their RSVP (same `id`) any time, including a change of mind between
+attending / not.
 
-### RSVP confirmation emails
-Every save — first submission or a later edit — sends the guest a confirmation email
-over SMTP (`lib/rsvp-mailer.js`, nodemailer):
+### RSVP confirmations (SMS + optional email)
+Every save — first submission or a later edit — texts the guest a confirmation
+(`lib/rsvp-sms.js`, Twilio):
 - "Thanks for RSVPing for Gautam and Sandhya's wedding" opening, tailored to their
   answer (attending vs. not).
-- A **Google Calendar "Add to calendar"** link for every ceremony.
 - An **"edit my RSVP"** link (`/?edit=<id>`) that reopens their saved response —
   pre-filled — on any device, so declining guests can easily change their mind later.
 
-Set `SMTP_USER` + `SMTP_PASS` (a Gmail address + app password works out of the box) to
-enable sending — see `server/.env.example`. Without them, RSVPs still save normally;
-only the email is skipped (and logged).
+Set `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER` to enable texting
+— see `server/.env.example`. Without them, RSVPs still save normally; only the text is
+skipped (and logged).
+
+If a guest also leaves an **email**, they additionally get an HTML confirmation over
+SMTP (`lib/rsvp-mailer.js`, nodemailer) with the same "thanks for RSVPing" wording plus
+a **Google Calendar "Add to calendar"** link for every ceremony. Set `SMTP_USER` +
+`SMTP_PASS` (a Gmail address + app password works out of the box) to enable it.
 
 - **Local dev:** the file lives on disk at `server/data/rsvps.json`.
 - **Production (Vercel):** the same `rsvps.json` is stored in **Vercel Blob** (Vercel
@@ -118,7 +124,10 @@ Project → **Settings → Environment Variables** → add:
 |----------|-------|
 | `ADMIN_PASSWORD` | a private password you choose (gates album uploads) |
 | `BLOB_READ_WRITE_TOKEN` | **auto-added in step 3** — don't set it by hand |
-| `SMTP_USER` | your sending email address (enables RSVP confirmation emails) |
+| `TWILIO_ACCOUNT_SID` | from [console.twilio.com](https://console.twilio.com) (enables RSVP confirmation texts) |
+| `TWILIO_AUTH_TOKEN` | from the same Twilio console page |
+| `TWILIO_FROM_NUMBER` | a phone number on that Twilio account, e.g. `+14155550123` |
+| `SMTP_USER` | your sending email address (optional — for guests who leave an email) |
 | `SMTP_PASS` | app password for that account (for Gmail: Google Account → Security → App passwords) |
 | `RSVP_FROM_EMAIL` | e.g. `Gautam & Sandhya <your-address@gmail.com>` (optional, defaults to `SMTP_USER`) |
 
@@ -133,8 +142,9 @@ one from Cloudflare/Namecheap and add it on the same page — DNS steps are show
 - **Site:** your `*.vercel.app` URL · **Health:** `/api/health`
 - **RSVP:** submit the form → `GET /api/rsvps` returns it, and `rsvps.json` appears in the
   **Blob** store (Storage → your Blob → Browse). Submitting again **appends** to the same
-  file — that's the "RSVP updates JSON" working in production. If `SMTP_USER`/`SMTP_PASS`
-  are set, the email you entered should also receive a confirmation within a few seconds.
+  file — that's the "RSVP updates JSON" working in production. If the Twilio vars are
+  set, the phone number you entered should receive a confirmation text within seconds
+  (and, if `SMTP_USER`/`SMTP_PASS` are set and you left an email, an email too).
 - **Album:** open `/?admin`, enter `ADMIN_PASSWORD`, upload a photo (try a >4.5 MB one to
   confirm the direct-to-Blob path) → it shows in the grid and persists on reload.
 
