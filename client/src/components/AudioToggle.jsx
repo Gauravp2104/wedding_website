@@ -4,18 +4,19 @@ import { useEffect, useRef, useState } from 'react';
 // (browsers block audio until a user gesture) and can be muted at any time.
 // Drop your track at client/public/audio/violin.mp3 — see the README there.
 const AUDIO_SRC = '/audio/music.mp3';
-const PREF_KEY = 'gs_audio'; // 'on' | 'off' — remembered across visits
 const TARGET_VOLUME = 0.3; // soft background level
-const FADE_MS = 1400;
+const FADE_MS = 900;
 
 export default function AudioToggle() {
   const audioRef = useRef(null);
   const fadeRef = useRef(null);
   const [playing, setPlaying] = useState(false);
 
-  // Ramp volume to `to` (0..1) over FADE_MS, optionally pausing at the end.
-  // (iOS ignores the volume property, so there it simply starts/stops.)
-  function fadeTo(to, { pauseAtEnd = false } = {}) {
+  // Ramp volume up to `to` (0..1) over FADE_MS. Only used for the fade-IN —
+  // muting pauses immediately instead (see stop() below), so a stalled or
+  // ignored fade can never leave audio audibly playing after a guest asked
+  // for silence.
+  function fadeTo(to) {
     const audio = audioRef.current;
     if (!audio) return;
     clearInterval(fadeRef.current);
@@ -25,10 +26,7 @@ export default function AudioToggle() {
       const next = audio.volume + step;
       const done = step >= 0 ? next >= to : next <= to;
       audio.volume = Math.min(1, Math.max(0, done ? to : next));
-      if (done) {
-        clearInterval(fadeRef.current);
-        if (pauseAtEnd) audio.pause();
-      }
+      if (done) clearInterval(fadeRef.current);
     }, 60);
   }
 
@@ -39,11 +37,6 @@ export default function AudioToggle() {
       audio.volume = 0;
       await audio.play(); // must run inside the user gesture for iOS/Safari
       setPlaying(true);
-      try {
-        localStorage.setItem(PREF_KEY, 'on');
-      } catch {
-        /* ignore */
-      }
       fadeTo(TARGET_VOLUME);
       return true;
     } catch {
@@ -53,34 +46,27 @@ export default function AudioToggle() {
     }
   }
 
+  // Mute immediately, not via a volume fade — iOS Safari ignores the
+  // `volume` property entirely, so a fade-then-pause there would leave
+  // the music audibly playing for the whole fade duration after the tap.
+  // pause() itself has no gesture restriction, so this always takes effect.
   function stop() {
     setPlaying(false);
-    try {
-      localStorage.setItem(PREF_KEY, 'off');
-    } catch {
-      /* ignore */
-    }
-    fadeTo(0, { pauseAtEnd: true });
+    clearInterval(fadeRef.current);
+    audioRef.current?.pause();
   }
 
   const toggle = () => (playing ? stop() : start());
 
-  // Music should be on from the moment the site loads, on phone and laptop
-  // alike — unless the guest muted it on a previous visit. Try to start it
-  // immediately; browsers that allow unmuted autoplay let it play right
-  // away. Browsers that don't (iOS Safari, and stricter Chrome/Firefox
-  // policies) reject that attempt, so we keep listening for the guest's
-  // very first interaction — a tap, click, key, or scroll — and start it
-  // then instead, which is as close to "always on" as those policies allow.
+  // Music should always start automatically when the page loads — every
+  // visit, on phone and laptop alike, regardless of whether a guest muted
+  // it on an earlier visit. Try to start it immediately; browsers that
+  // allow unmuted autoplay let it play right away. Browsers that don't
+  // (iOS Safari, and stricter Chrome/Firefox policies) reject that attempt,
+  // so we also start it on the guest's very first interaction — a tap,
+  // click, key, or scroll — which is as close to "always on" as those
+  // policies allow.
   useEffect(() => {
-    let pref = null;
-    try {
-      pref = localStorage.getItem(PREF_KEY);
-    } catch {
-      /* ignore */
-    }
-    if (pref === 'off') return undefined;
-
     const triggers = ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'];
     const onFirst = async () => {
       const ok = await start();
