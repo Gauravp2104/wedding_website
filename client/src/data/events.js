@@ -117,10 +117,6 @@ export const events = [
     blurb:
       'As the lamps are lit, the evening turns to celebration — a grand reception under a canopy of jasmine and marigold, with the couple welcoming family and friends.',
     image: `${PICTURES_BASE}reception-musical.jpeg`,
-    // This photo is portrait, unlike the others — on the wide desktop photo
-    // frame it should fill edge-to-edge (crop a little) rather than
-    // letterbox with visible gaps either side. See Events.jsx/global.css.
-    photoFit: 'cover',
     palette: {
       bg: ['#3a0d1a', '#5e1226', '#7a1f2b'],
       accent: '#e7b84e',

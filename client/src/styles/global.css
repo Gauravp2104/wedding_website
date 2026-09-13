@@ -374,39 +374,27 @@ a {
   max-width: 560px;
   text-align: left;
 }
-/* The ceremony's own caricature artwork, shown in full (never cropped) so
-   everyone in the picture stays visible — sized to the frame, not zoomed. */
+/* Every ceremony photo — whatever its own source aspect ratio — is framed
+   at the same 4:3 and fills it (object-fit: cover), so the six ceremonies
+   read as one consistent set of frames rather than each taking on its own
+   photo's shape. Same ratio at every breakpoint (see the max-width:768px
+   block below); only the frame's overall size shrinks on phone. */
 .event__photo {
   flex: 1 1 360px;
   min-width: 0;
   max-width: 440px;
+  aspect-ratio: 4 / 3;
   display: flex;
   justify-content: center;
 }
 .event__photo img {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: 62vh;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 24px 70px -24px rgba(0, 0, 0, 0.55);
-}
-@media (min-width: 769px) {
-  /* Reception's photo is portrait — mismatched to this wide frame, so
-     "contain" would letterbox with the border visibly framing empty gaps
-     either side. Give it a portrait-friendly frame of its own and fill it
-     (cropping only a little) so the border hugs the photo with no gap. */
-  .event__photo--fill {
-    aspect-ratio: 4 / 5;
-  }
-  .event__photo--fill img {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    object-fit: cover;
-  }
 }
 @media (max-width: 768px) {
   .event__row {
@@ -438,28 +426,12 @@ a {
   /* Explicit width + centered margin (not just the parent's flex
      align-items) so the frame reliably centers even where the browser
      can't resolve the img's percentage width against a shrink-to-fit
-     flex item — and so it isn't left hugging one edge. */
+     flex item — and so it isn't left hugging one edge. Same 4:3 aspect
+     ratio as desktop (inherited from .event__photo above) — just smaller. */
   .event__photo {
     width: 100%;
     max-width: 320px;
     margin: 0 auto;
-  }
-  .event__photo img {
-    max-height: 46vh;
-  }
-  /* Reception's photo is portrait (like on desktop above) — on mobile the
-     generic frame is wide-and-short (sized for the square/landscape
-     photos), so "contain" would shrink it way down and letterbox with
-     large empty gaps either side instead of filling the frame. Give it
-     the same portrait-friendly cover treatment here too. */
-  .event__photo--fill {
-    aspect-ratio: 4 / 5;
-  }
-  .event__photo--fill img {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    object-fit: cover;
   }
   /* The ceremony icon/glyph sits directly above the ceremony name (e.g.
      the Mangalsutra graphic above "Muhurtham") — center it explicitly

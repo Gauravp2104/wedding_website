@@ -75,7 +75,7 @@ function EventContent({ ev }) {
 
         {ev.image && (
           <motion.div
-            className={`event__photo ${ev.photoFit === 'cover' ? 'event__photo--fill' : ''}`}
+            className="event__photo"
             initial={{ opacity: 0, scale: 0.94 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: false, amount: 0.4 }}
