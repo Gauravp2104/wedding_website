@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { orderedCountries } from '../data/countries';
+import { countries, orderedCountries } from '../data/countries';
 
 const { top: topCountries, rest: restCountries } = orderedCountries();
 
@@ -58,10 +58,34 @@ export default function RSVP() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const selectedCountry = countries.find((c) => c.dial === form.dialCode);
 
-  // Restore a previously submitted response (this device) and show the
-  // thank-you. The guest can edit it; the saved form pre-fills the fields.
+  // Restore a previously submitted response and show the thank-you. Two
+  // paths hydrate the form:
+  //  1. an "?edit=<id>" link (from a confirmation email) fetches that exact
+  //     RSVP from the server — works on any device, not just the one that
+  //     originally submitted it;
+  //  2. otherwise, this device's localStorage copy (survives a refresh).
+  // Either way the guest can edit it; re-submitting upserts the same entry.
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+
+    if (editId) {
+      fetch(`/api/rsvp?id=${encodeURIComponent(editId)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.ok && data.rsvp) hydrateFromEntry(data.rsvp);
+          else restoreFromLocalStorage();
+        })
+        .catch(() => restoreFromLocalStorage());
+      return;
+    }
+
+    restoreFromLocalStorage();
+  }, []);
+
+  function restoreFromLocalStorage() {
     try {
       const saved = JSON.parse(localStorage.getItem(RSVP_KEY) || 'null');
       if (saved && saved.name) {
@@ -71,7 +95,47 @@ export default function RSVP() {
     } catch {
       /* ignore */
     }
-  }, []);
+  }
+
+  // Map the server's stored (nested yes/no) shape back into flat form fields.
+  function hydrateFromEntry(entry) {
+    const [dialCode, ...phoneRest] = String(entry.phone || '').split(' ');
+    const attendChoice = entry.attending?.bothDays === 'yes'
+      ? 'both'
+      : entry.attending?.reception === 'yes'
+      ? 'reception'
+      : entry.attending?.muhurtham === 'yes'
+      ? 'muhurtham'
+      : 'both';
+    const accommodationDays = entry.accommodation?.bothDays === 'yes'
+      ? 'both'
+      : entry.accommodation?.day1 === 'yes'
+      ? 'day1'
+      : entry.accommodation?.day2 === 'yes'
+      ? 'day2'
+      : 'both';
+    const hydrated = {
+      ...initial,
+      id: entry.id || '',
+      name: entry.name || '',
+      email: entry.email || '',
+      dialCode: dialCode && dialCode.startsWith('+') ? dialCode : initial.dialCode,
+      phone: phoneRest.join(' '),
+      attending: entry.attending?.value || 'yes',
+      guests: entry.guests || 1,
+      attendChoice,
+      accommodation: entry.accommodation?.value || 'no',
+      accommodationDays,
+      message: entry.message || '',
+    };
+    setForm(hydrated);
+    setStatus('idle');
+    try {
+      localStorage.setItem(RSVP_KEY, JSON.stringify(hydrated));
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -80,8 +144,13 @@ export default function RSVP() {
       setStatus('error');
       return;
     }
-    if (!form.email.trim() && !form.phone.trim()) {
-      setErrorMsg('Please leave an email or phone number so we can reach you.');
+    if (!form.email.trim()) {
+      setErrorMsg('Please share your email so we can send your RSVP confirmation.');
+      setStatus('error');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setErrorMsg('Please enter a valid email address.');
       setStatus('error');
       return;
     }
@@ -145,6 +214,10 @@ export default function RSVP() {
                 ? 'Your RSVP is in — we can’t wait to celebrate with you.'
                 : 'We’ll miss you, but thank you for letting us know. 💛'}
             </p>
+            <p style={{ opacity: 0.7, fontSize: '0.92em' }}>
+              A confirmation email is on its way to <strong>{form.email}</strong> with calendar
+              links for every ceremony{form.attending !== 'yes' && ' and a link to edit your RSVP'}.
+            </p>
             <button
               type="button"
               className="rsvp__edit-btn"
@@ -178,21 +251,25 @@ export default function RSVP() {
             </div>
 
             <div className="field">
-              <label htmlFor="email">
-                Email <span className="field__optional">(optional)</span>
-              </label>
+              <label htmlFor="email">Email *</label>
               <input
                 id="email"
                 type="email"
+                required
                 value={form.email}
                 onChange={(e) => set('email', e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
               />
+              <p className="field__hint">
+                We’ll send your RSVP confirmation and calendar links here.
+              </p>
             </div>
 
             <div className="field">
-              <label htmlFor="phone">Phone</label>
+              <label htmlFor="phone">
+                Phone <span className="field__optional">(optional)</span>
+              </label>
               <div className="phone-row">
                 <select
                   className="phone-code"
@@ -225,9 +302,12 @@ export default function RSVP() {
                   autoComplete="tel-national"
                 />
               </div>
-              <p className="field__hint">
-                Please give us your email <strong>or</strong> phone so we can reach you.
-              </p>
+              {selectedCountry && (
+                <p className="field__hint phone-country-hint">
+                  {selectedCountry.flag} {selectedCountry.name} · {selectedCountry.dial}
+                  {form.phone ? ` ${form.phone}` : ''}
+                </p>
+              )}
             </div>
 
             <div className="field">

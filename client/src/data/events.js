@@ -13,7 +13,7 @@ const PICTURES_BASE = 'https://cma6ueb3wdf2jbmh.public.blob.vercel-storage.com/p
 
 // `start`/`end` are local Bengaluru times (Asia/Kolkata, +05:30) in
 // YYYYMMDDTHHMMSS form. Convert to a UTC iCalendar stamp (…Z).
-function icsStamp(local) {
+export function icsStamp(local) {
   const Y = +local.slice(0, 4);
   const Mo = +local.slice(4, 6);
   const Da = +local.slice(6, 8);
@@ -27,7 +27,7 @@ function icsStamp(local) {
   )}${p(u.getUTCMinutes())}${p(u.getUTCSeconds())}Z`;
 }
 
-function icsEscape(s) {
+export function icsEscape(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
 }
 
@@ -105,8 +105,8 @@ export const events = [
   {
     id: 'reception-musical',
     icon: '🎶',
-    name: 'Reception & Musical Night',
-    sanskrit: 'இசை இரவு',
+    name: 'Reception',
+    sanskrit: 'வரவேற்பு',
     day: 'Day 1',
     date: 'Wednesday, 10 February 2027',
     time: '6:30 – 8:30 PM',
@@ -115,7 +115,7 @@ export const events = [
     end: '20270210T203000',
     location: 'Shubh Royale',
     blurb:
-      'As the lamps are lit, the evening turns to celebration — a grand reception with a live Carnatic and light-music ensemble under a canopy of jasmine and marigold.',
+      'As the lamps are lit, the evening turns to celebration — a grand reception under a canopy of jasmine and marigold, with the couple welcoming family and friends.',
     image: `${PICTURES_BASE}reception-musical.jpeg`,
     palette: {
       bg: ['#3a0d1a', '#5e1226', '#7a1f2b'],

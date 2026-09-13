@@ -15,8 +15,10 @@ on the server.
 - **Observability:** structured JSON logs (request id + latency per call) and a
   `/api/health` endpoint exposing live counters
 
-The only service used in production is **Vercel Blob** (free tier, part of your Vercel
-project — no separate account, no Google, no email).
+The main service used in production is **Vercel Blob** (free tier, part of your Vercel
+project — no separate account needed). RSVP confirmation emails are sent over **SMTP**
+(e.g. a free Gmail account + app password) — optional, but recommended so guests get a
+confirmation with calendar links.
 
 ## Quick start
 
@@ -33,7 +35,22 @@ The Vite dev server proxies `/api/*` calls to the Express backend on port 4000.
 ## RSVPs
 
 Every RSVP is appended to a **`rsvps.json`** file — one object per guest with
-`name, attending, guests, email, phone, events, message, submittedAt`.
+`name, attending, guests, email, phone, events, message, submittedAt`. Email is
+required (used to send the confirmation below); a guest can resubmit to edit their
+RSVP (same `id`) any time, including a change of mind between attending / not.
+
+### RSVP confirmation emails
+Every save — first submission or a later edit — sends the guest a confirmation email
+over SMTP (`lib/rsvp-mailer.js`, nodemailer):
+- "Thanks for RSVPing for Gautam and Sandhya's wedding" opening, tailored to their
+  answer (attending vs. not).
+- A **Google Calendar "Add to calendar"** link for every ceremony.
+- An **"edit my RSVP"** link (`/?edit=<id>`) that reopens their saved response —
+  pre-filled — on any device, so declining guests can easily change their mind later.
+
+Set `SMTP_USER` + `SMTP_PASS` (a Gmail address + app password works out of the box) to
+enable sending — see `server/.env.example`. Without them, RSVPs still save normally;
+only the email is skipped (and logged).
 
 - **Local dev:** the file lives on disk at `server/data/rsvps.json`.
 - **Production (Vercel):** the same `rsvps.json` is stored in **Vercel Blob** (Vercel
@@ -101,6 +118,9 @@ Project → **Settings → Environment Variables** → add:
 |----------|-------|
 | `ADMIN_PASSWORD` | a private password you choose (gates album uploads) |
 | `BLOB_READ_WRITE_TOKEN` | **auto-added in step 3** — don't set it by hand |
+| `SMTP_USER` | your sending email address (enables RSVP confirmation emails) |
+| `SMTP_PASS` | app password for that account (for Gmail: Google Account → Security → App passwords) |
+| `RSVP_FROM_EMAIL` | e.g. `Gautam & Sandhya <your-address@gmail.com>` (optional, defaults to `SMTP_USER`) |
 
 Then **redeploy** (Deployments → ⋯ → Redeploy) so the new env vars take effect.
 
@@ -113,7 +133,8 @@ one from Cloudflare/Namecheap and add it on the same page — DNS steps are show
 - **Site:** your `*.vercel.app` URL · **Health:** `/api/health`
 - **RSVP:** submit the form → `GET /api/rsvps` returns it, and `rsvps.json` appears in the
   **Blob** store (Storage → your Blob → Browse). Submitting again **appends** to the same
-  file — that's the "RSVP updates JSON" working in production.
+  file — that's the "RSVP updates JSON" working in production. If `SMTP_USER`/`SMTP_PASS`
+  are set, the email you entered should also receive a confirmation within a few seconds.
 - **Album:** open `/?admin`, enter `ADMIN_PASSWORD`, upload a photo (try a >4.5 MB one to
   confirm the direct-to-Blob path) → it shows in the grid and persists on reload.
 
@@ -136,7 +157,7 @@ needs no token.)
 |-----|----------|------|-------|
 | 10 Feb 2027 | Vratham | 8:00–10:00 AM | ☀️ bright |
 | 10 Feb 2027 | Nitchayathartham | 11:00 AM–12:30 PM | ☀️ bright |
-| 10 Feb 2027 | Reception & Musical Night | 6:30–8:30 PM | 🌙 dark |
+| 10 Feb 2027 | Reception | 6:30–8:30 PM | 🌙 dark |
 | 11 Feb 2027 | Kasi Yatra & Oonjal | 8:00 AM | ☀️ bright |
 | 11 Feb 2027 | Muhurtham | 10:30–11:30 AM | ☀️ bright |
 | 11 Feb 2027 | Nalungu | 4:30–5:30 PM | 🌙 dark |

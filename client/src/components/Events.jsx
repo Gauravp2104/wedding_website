@@ -132,12 +132,12 @@ export default function Events() {
         {events.map((ev, i) => (
           <motion.div
             key={ev.id}
+            className="events__bg-img"
             style={{
               position: 'absolute',
               inset: 0,
               backgroundImage: `url(${ev.image})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
+              backgroundColor: ev.palette.bg[1],
             }}
             animate={{ opacity: i === active ? 1 : 0 }}
             transition={{ duration: 1.1, ease: 'easeInOut' }}

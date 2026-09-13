@@ -7,6 +7,8 @@ import { dirname, join } from 'path';
 import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import { logger, incr, getMetrics, newRequestId } from '../lib/logger.js';
 import { buildRsvpEntry } from '../lib/rsvp-entry.js';
+import { sendRsvpConfirmationEmail } from '../lib/rsvp-mailer.js';
+import { resolveOrigin } from '../lib/site-url.js';
 
 dotenv.config();
 
@@ -86,11 +88,22 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, metrics: getMetrics() });
 });
 
+// Fetch one guest's saved RSVP by id — used by the "edit my RSVP" link sent
+// in their confirmation email, so it works from any device.
+app.get('/api/rsvp', async (req, res) => {
+  const id = String(req.query.id || '');
+  if (!id) return res.status(400).json({ ok: false, error: 'Missing id.' });
+  const all = await readRsvps();
+  const found = all.find((r) => r.id === id);
+  if (!found) return res.status(404).json({ ok: false, error: 'RSVP not found.' });
+  res.json({ ok: true, rsvp: found });
+});
+
 app.post('/api/rsvp', async (req, res) => {
   incr('rsvpReceived');
-  const { name, attending } = req.body || {};
-  if (!name || !attending) {
-    return res.status(400).json({ ok: false, error: 'Name and attendance are required.' });
+  const { name, attending, email } = req.body || {};
+  if (!name || !attending || !email) {
+    return res.status(400).json({ ok: false, error: 'Name, email, and attendance are required.' });
   }
 
   const entry = buildRsvpEntry(req.body);
@@ -99,6 +112,9 @@ app.post('/api/rsvp', async (req, res) => {
     const all = await saveRsvp(entry);
     incr('rsvpSaved');
     logger.info('rsvp.saved', { requestId: req.id, name: entry.name, total: all.length });
+
+    await sendRsvpConfirmationEmail(entry, { origin: resolveOrigin(req), requestId: req.id });
+
     res.json({ ok: true, saved: true });
   } catch (err) {
     incr('rsvpFailed');

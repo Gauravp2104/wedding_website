@@ -347,6 +347,23 @@ a {
 .events {
   position: relative;
 }
+/* Ceremony background art: full-bleed "cover" on laptop/desktop, where the
+   photo's aspect ratio is close to the viewport's so nobody gets cropped
+   out. Phones are much narrower/taller, so "cover" there would zoom in and
+   crop people off the sides — switch to "contain" so the whole photo (with
+   everyone in it) stays visible, letterboxed with the ceremony's own
+   palette colour instead of being cropped. */
+.events__bg-img {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+@media (max-width: 768px) {
+  .events__bg-img {
+    background-size: contain;
+    background-position: center;
+  }
+}
 .event {
   position: relative;
   min-height: 100vh;
