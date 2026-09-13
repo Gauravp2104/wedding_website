@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 
 // South Indian classical violin that begins on the visitor's first interaction
-// (browsers block audio until a user gesture) and can be muted at any time.
+// (browsers block audio until a user gesture). On laptop/desktop it can be
+// muted via the floating button; on phone there's no mute button (see
+// global.css), so it just plays softly in the background.
 // Drop your track at client/public/audio/violin.mp3 — see the README there.
 const AUDIO_SRC = '/audio/music.mp3';
-const TARGET_VOLUME = 0.3; // soft background level
+// Low background level — phone guests have no mute button to fall back on
+// (see the "@media (max-width: 640px)" rule in global.css), so it needs to
+// stay unobtrusive on its own.
+const TARGET_VOLUME = 0.18;
 const FADE_MS = 900;
 
 export default function AudioToggle() {

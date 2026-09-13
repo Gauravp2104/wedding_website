@@ -1536,6 +1536,14 @@ a {
 .audio-toggle.on {
   animation: audioPulse 2.6s ease-out infinite;
 }
+/* No mute control on phone — music just plays softly in the background;
+   see AudioToggle.jsx, which still autoplays the same way regardless of
+   the button's visibility. */
+@media (max-width: 640px) {
+  .audio-toggle {
+    display: none;
+  }
+}
 @keyframes audioPulse {
   0% {
     box-shadow: 0 0 0 0 rgba(231, 184, 78, 0.45);
