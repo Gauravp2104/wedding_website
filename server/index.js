@@ -7,9 +7,7 @@ import { dirname, join } from 'path';
 import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import { logger, incr, getMetrics, newRequestId } from '../lib/logger.js';
 import { buildRsvpEntry } from '../lib/rsvp-entry.js';
-import { sendRsvpConfirmationEmail } from '../lib/rsvp-mailer.js';
-import { sendRsvpConfirmationSms } from '../lib/rsvp-sms.js';
-import { resolveOrigin } from '../lib/site-url.js';
+import { buildRsvpWorkbookBuffer } from '../lib/rsvp-xlsx.js';
 
 dotenv.config();
 
@@ -18,6 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // (e.g. DATA_DIR=/data) so RSVPs survive restarts and redeploys.
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, 'data');
 const RSVP_FILE = join(DATA_DIR, 'rsvps.json');
+const RSVP_XLSX_FILE = join(DATA_DIR, 'rsvps.xlsx');
 // Curated album images for local dev (image1…image12). In production the same
 // images live in Vercel Blob under the "images/" prefix.
 const IMAGES_DIR = join(__dirname, '..', 'client', 'public', 'images');
@@ -77,6 +76,18 @@ async function saveRsvp(entry) {
   if (i >= 0) all[i] = entry;
   else all.push(entry);
   await writeFile(RSVP_FILE, JSON.stringify(all, null, 2), 'utf-8');
+
+  // Best-effort: rsvps.json above is the source of truth, so a spreadsheet
+  // failure never fails the RSVP save.
+  try {
+    const buffer = await buildRsvpWorkbookBuffer(all);
+    await writeFile(RSVP_XLSX_FILE, buffer);
+    incr('rsvpXlsxSaved');
+  } catch (err) {
+    incr('rsvpXlsxFailed');
+    logger.error('rsvp.xlsx.failed', { error: err.message });
+  }
+
   return all;
 }
 
@@ -89,8 +100,8 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, metrics: getMetrics() });
 });
 
-// Fetch one guest's saved RSVP by id — used by the "edit my RSVP" link sent
-// in their confirmation text/email, so it works from any device.
+// Fetch one guest's saved RSVP by id, so a guest on a new device (or one
+// who cleared localStorage) can look up and re-edit their response by id.
 app.get('/api/rsvp', async (req, res) => {
   const id = String(req.query.id || '');
   if (!id) return res.status(400).json({ ok: false, error: 'Missing id.' });
@@ -114,12 +125,6 @@ app.post('/api/rsvp', async (req, res) => {
     incr('rsvpSaved');
     logger.info('rsvp.saved', { requestId: req.id, name: entry.name, total: all.length });
 
-    const origin = resolveOrigin(req);
-    await Promise.all([
-      sendRsvpConfirmationSms(entry, { origin, requestId: req.id }),
-      sendRsvpConfirmationEmail(entry, { origin, requestId: req.id }),
-    ]);
-
     res.json({ ok: true, saved: true });
   } catch (err) {
     incr('rsvpFailed');
@@ -131,6 +136,16 @@ app.post('/api/rsvp', async (req, res) => {
 // View all RSVPs as JSON.
 app.get('/api/rsvps', async (_req, res) => {
   res.json(await readRsvps());
+});
+
+// Download the live RSVP spreadsheet — regenerated on every save.
+app.get('/api/rsvps.xlsx', async (_req, res) => {
+  try {
+    await readFile(RSVP_XLSX_FILE);
+  } catch {
+    return res.status(404).json({ ok: false, error: 'No RSVPs yet.' });
+  }
+  res.download(RSVP_XLSX_FILE, 'rsvps.xlsx');
 });
 
 // Public album listing — the curated images in client/public/images,
@@ -170,5 +185,6 @@ app.listen(PORT, () => {
   console.log(`   • RSVPs saved to:   ${RSVP_FILE}`);
   console.log(`   • Album images:     ${IMAGES_DIR}`);
   console.log(`   • View RSVPs:       http://localhost:${PORT}/api/rsvps`);
+  console.log(`   • RSVP spreadsheet: http://localhost:${PORT}/api/rsvps.xlsx`);
   console.log(`   • Health + metrics: http://localhost:${PORT}/api/health\n`);
 });

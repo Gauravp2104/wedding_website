@@ -62,9 +62,8 @@ export default function RSVP() {
 
   // Restore a previously submitted response and show the thank-you. Two
   // paths hydrate the form:
-  //  1. an "?edit=<id>" link (from a confirmation email) fetches that exact
-  //     RSVP from the server — works on any device, not just the one that
-  //     originally submitted it;
+  //  1. an "?edit=<id>" link fetches that exact RSVP from the server —
+  //     works on any device, not just the one that originally submitted it;
   //  2. otherwise, this device's localStorage copy (survives a refresh).
   // Either way the guest can edit it; re-submitting upserts the same entry.
   useEffect(() => {
@@ -145,7 +144,7 @@ export default function RSVP() {
       return;
     }
     if (!form.phone.trim()) {
-      setErrorMsg('Please share your phone number so we can send your RSVP confirmation.');
+      setErrorMsg('Please share your phone number so we can reach you if plans change.');
       setStatus('error');
       return;
     }
@@ -215,8 +214,7 @@ export default function RSVP() {
                 : 'We’ll miss you, but thank you for letting us know. 💛'}
             </p>
             <p style={{ opacity: 0.7, fontSize: '0.92em' }}>
-              A confirmation text is on its way to <strong>{form.dialCode} {form.phone}</strong>
-              {form.email ? ' (and to your email)' : ''} with a link to edit your RSVP any time.
+              You can come back and edit your response any time before the big day.
             </p>
             <button
               type="button"
@@ -263,7 +261,7 @@ export default function RSVP() {
                 autoComplete="email"
               />
               <p className="field__hint">
-                If you'd also like calendar links by email, leave this in.
+                In case we need to reach you with details about the ceremonies.
               </p>
             </div>
 

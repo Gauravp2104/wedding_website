@@ -1,14 +1,12 @@
 import { appendRsvp, readRsvps } from '../lib/rsvp-store.js';
 import { buildRsvpEntry } from '../lib/rsvp-entry.js';
 import { incr, logger, newRequestId } from '../lib/logger.js';
-import { sendRsvpConfirmationEmail } from '../lib/rsvp-mailer.js';
-import { sendRsvpConfirmationSms } from '../lib/rsvp-sms.js';
-import { resolveOrigin } from '../lib/site-url.js';
 
-// GET /api/rsvp?id=... — fetch one guest's saved RSVP, so an "edit my RSVP"
-// link (from their confirmation text) can pre-fill the form on any device.
-// POST /api/rsvp — append/upsert one RSVP to the rsvps.json blob, then text
-// (and, if given, email) the guest a confirmation (Vercel deployment).
+// GET /api/rsvp?id=... — fetch one guest's saved RSVP, so a guest on a new
+// device (or one who cleared localStorage) can look up and re-edit their
+// response by id.
+// POST /api/rsvp — append/upsert one RSVP to the rsvps.json blob (which also
+// regenerates rsvps.xlsx — see lib/rsvp-store.js) (Vercel deployment).
 export default async function handler(req, res) {
   const requestId = newRequestId();
   res.setHeader('X-Request-Id', requestId);
@@ -43,12 +41,6 @@ export default async function handler(req, res) {
     const all = await appendRsvp(entry);
     incr('rsvpSaved');
     logger.info('rsvp.saved', { requestId, name: entry.name, total: all.length });
-
-    const origin = resolveOrigin(req);
-    await Promise.all([
-      sendRsvpConfirmationSms(entry, { origin, requestId }),
-      sendRsvpConfirmationEmail(entry, { origin, requestId }),
-    ]);
 
     res.json({ ok: true, saved: true });
   } catch (err) {

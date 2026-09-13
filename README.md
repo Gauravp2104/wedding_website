@@ -5,21 +5,21 @@ kolam ornaments, temple motifs, gold-on-maroon palette, and **six scroll-driven
 ceremony sections** whose colour scheme brightens for **AM** ceremonies and deepens
 for **PM** ceremonies. Includes a **photo album** the hosts upload into and guests
 browse, and an animated **RSVP** form whose submissions are **saved to a JSON file**
-on the server.
+(with a live Excel spreadsheet kept in sync alongside it) on the server.
 
 ## Stack
 - **Frontend:** React 18 + Vite + Framer Motion
-- **Local dev backend:** Node/Express — RSVPs → `data/rsvps.json`, photos → `data/uploads/`
+- **Local dev backend:** Node/Express — RSVPs → `data/rsvps.json` (+ `data/rsvps.xlsx`),
+  photos → `data/uploads/`
 - **Production (Vercel):** serverless functions in `api/` that read/write a
   `rsvps.json` file **and** album photos in **Vercel Blob** (durable storage; no disk needed)
 - **Observability:** structured JSON logs (request id + latency per call) and a
   `/api/health` endpoint exposing live counters
 
 The main service used in production is **Vercel Blob** (free tier, part of your Vercel
-project — no separate account needed). RSVP confirmations are texted via **Twilio**
-(the guaranteed channel — phone is required on the form) and, if a guest leaves an
-email too, also sent over **SMTP** (e.g. a free Gmail account + app password) with
-richer calendar links. Both are optional to configure; RSVPs still save without them.
+project — no separate account needed). No confirmation texts/emails are sent to
+guests — RSVPs are simply saved, live, to both `rsvps.json` and a companion
+`rsvps.xlsx` spreadsheet you can open in Excel/Google Sheets any time.
 
 ## Quick start
 
@@ -37,35 +37,34 @@ The Vite dev server proxies `/api/*` calls to the Express backend on port 4000.
 
 Every RSVP is appended to a **`rsvps.json`** file — one object per guest with
 `name, attending, guests, email, phone, events, message, submittedAt`. Phone is
-required (used to send the confirmation text below); email is optional. A guest can
+required (so hosts have a way to reach a guest); email is optional. A guest can
 resubmit to edit their RSVP (same `id`) any time, including a change of mind between
-attending / not.
+attending / not. No confirmation texts or emails are sent — the site doesn't
+integrate with Twilio/SMTP at all.
 
-### RSVP confirmations (SMS + optional email)
-Every save — first submission or a later edit — texts the guest a confirmation
-(`lib/rsvp-sms.js`, Twilio):
-- "Thanks for RSVPing for Gautam and Sandhya's wedding" opening, tailored to their
-  answer (attending vs. not).
-- An **"edit my RSVP"** link (`/?edit=<id>`) that reopens their saved response —
-  pre-filled — on any device, so declining guests can easily change their mind later.
+### Live Excel spreadsheet
+Every save — first submission or a later edit — also regenerates a companion
+**`rsvps.xlsx`** (`lib/rsvp-xlsx.js`, via `exceljs`) from the full, current RSVP list:
+one row per guest, with Name / Attending / Ceremonies / Guests / Accommodation /
+Phone / Email / Message / Submitted-at columns, a bold frozen header row, and
+autofilter. It's a full re-render each save (not an append-only log), so it always
+matches `rsvps.json` exactly.
 
-Set `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_NUMBER` to enable texting
-— see `server/.env.example`. Without them, RSVPs still save normally; only the text is
-skipped (and logged).
+- **Local dev:** written to `server/data/rsvps.xlsx` next to the JSON. Download it at
+  `GET /api/rsvps.xlsx`.
+- **Production (Vercel):** stored in the same **Vercel Blob** store as `rsvps.json`,
+  under the pathname `rsvps.xlsx` (overwritten in place on every save — same public
+  URL throughout). `GET /api/rsvps.xlsx` redirects to that URL, so it's a stable link
+  you can bookmark and re-open in Excel/Google Sheets any time to see the latest RSVPs.
 
-If a guest also leaves an **email**, they additionally get an HTML confirmation over
-SMTP (`lib/rsvp-mailer.js`, nodemailer) with the same "thanks for RSVPing" wording plus
-a **Google Calendar "Add to calendar"** link for every ceremony. Set `SMTP_USER` +
-`SMTP_PASS` (a Gmail address + app password works out of the box) to enable it.
-
-- **Local dev:** the file lives on disk at `server/data/rsvps.json`.
+- **Local dev:** the JSON file lives on disk at `server/data/rsvps.json`.
 - **Production (Vercel):** the same `rsvps.json` is stored in **Vercel Blob** (Vercel
   functions can't write to disk), and each RSVP reads it, appends, and writes it back.
 - **View all RSVPs as JSON:** `GET /api/rsvps` (works in both). Locally you can also open
   `server/data/rsvps.json`; in production you can download `rsvps.json` from the Vercel
   Blob dashboard.
 
-> Set `DATA_DIR` (e.g. `DATA_DIR=/data`) to change where the **local** file lives.
+> Set `DATA_DIR` (e.g. `DATA_DIR=/data`) to change where the **local** files live.
 
 ## Photo album
 
@@ -124,12 +123,6 @@ Project → **Settings → Environment Variables** → add:
 |----------|-------|
 | `ADMIN_PASSWORD` | a private password you choose (gates album uploads) |
 | `BLOB_READ_WRITE_TOKEN` | **auto-added in step 3** — don't set it by hand |
-| `TWILIO_ACCOUNT_SID` | from [console.twilio.com](https://console.twilio.com) (enables RSVP confirmation texts) |
-| `TWILIO_AUTH_TOKEN` | from the same Twilio console page |
-| `TWILIO_FROM_NUMBER` | a phone number on that Twilio account, e.g. `+14155550123` |
-| `SMTP_USER` | your sending email address (optional — for guests who leave an email) |
-| `SMTP_PASS` | app password for that account (for Gmail: Google Account → Security → App passwords) |
-| `RSVP_FROM_EMAIL` | e.g. `Gautam & Sandhya <your-address@gmail.com>` (optional, defaults to `SMTP_USER`) |
 
 Then **redeploy** (Deployments → ⋯ → Redeploy) so the new env vars take effect.
 
@@ -140,11 +133,10 @@ one from Cloudflare/Namecheap and add it on the same page — DNS steps are show
 
 ### Verify after deploy
 - **Site:** your `*.vercel.app` URL · **Health:** `/api/health`
-- **RSVP:** submit the form → `GET /api/rsvps` returns it, and `rsvps.json` appears in the
-  **Blob** store (Storage → your Blob → Browse). Submitting again **appends** to the same
-  file — that's the "RSVP updates JSON" working in production. If the Twilio vars are
-  set, the phone number you entered should receive a confirmation text within seconds
-  (and, if `SMTP_USER`/`SMTP_PASS` are set and you left an email, an email too).
+- **RSVP:** submit the form → `GET /api/rsvps` returns it, and both `rsvps.json` and
+  `rsvps.xlsx` appear in the **Blob** store (Storage → your Blob → Browse). Submitting
+  again **updates** both files in place — that's the "live spreadsheet" working in
+  production. Open `GET /api/rsvps.xlsx` any time for the current spreadsheet.
 - **Album:** open `/?admin`, enter `ADMIN_PASSWORD`, upload a photo (try a >4.5 MB one to
   confirm the direct-to-Blob path) → it shows in the grid and persists on reload.
 
