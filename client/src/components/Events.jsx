@@ -3,22 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { events, MAPS_URL } from '../data/events';
 import { KolamCorner, Mangalsutra } from './Ornaments';
 
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  const n = parseInt(h, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-// A tinted scrim in the event's own palette, laid over its background
-// illustration so the artwork reads as "shaded" colour rather than a
-// flat photo — keeps text legible while still showing the caricature.
-function shade(palette, alpha) {
+// Each ceremony's own colour scheme, as a soft radial wash behind the
+// content — no photo in the background, so it stays legible and calm; the
+// ceremony's actual picture is shown as a real photo on the right instead.
+function gradient(palette) {
   const [a, b, c] = palette.bg;
-  const rgba = (hex, mul) => {
-    const [r, g, bl] = hexToRgb(hex);
-    return `rgba(${r}, ${g}, ${bl}, ${Math.min(1, alpha * mul).toFixed(2)})`;
-  };
-  return `radial-gradient(circle at 50% 0%, ${rgba(a, 1)} 0%, ${rgba(b, 1.05)} 48%, ${rgba(c, 1.1)} 100%)`;
+  return `radial-gradient(circle at 50% 0%, ${a} 0%, ${b} 48%, ${c} 100%)`;
 }
 
 function EventContent({ ev }) {
@@ -36,51 +26,65 @@ function EventContent({ ev }) {
       <KolamCorner className="event__corner event__corner--tl" style={{ color: palette.accent }} />
       <KolamCorner className="event__corner event__corner--br" style={{ color: palette.accent }} />
 
-      <motion.div
-        className="event__inner"
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: false, amount: 0.5 }}
-      >
-        <motion.span className="event__badge" variants={rise} custom={0} style={{ color: palette.sub }}>
-          {ev.day} · {ev.date}
-        </motion.span>
+      <div className="event__row">
         <motion.div
-          className="event__icon"
-          variants={rise}
-          custom={1}
-          style={ev.icon === 'mangalsutra' ? { color: palette.accent } : undefined}
+          className="event__inner"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: false, amount: 0.5 }}
         >
-          {ev.icon === 'mangalsutra' ? <Mangalsutra style={{ verticalAlign: 'middle' }} /> : ev.icon}
+          <motion.span className="event__badge" variants={rise} custom={0} style={{ color: palette.sub }}>
+            {ev.day} · {ev.date}
+          </motion.span>
+          <motion.div
+            className="event__icon"
+            variants={rise}
+            custom={1}
+            style={ev.icon === 'mangalsutra' ? { color: palette.accent } : undefined}
+          >
+            {ev.icon === 'mangalsutra' ? <Mangalsutra style={{ verticalAlign: 'middle' }} /> : ev.icon}
+          </motion.div>
+          <motion.h2 className="event__name" variants={rise} custom={2} style={{ color: palette.accent }}>
+            {ev.name}
+          </motion.h2>
+          <motion.p className="event__script" variants={rise} custom={3}>
+            {ev.sanskrit}
+          </motion.p>
+          <motion.div className="event__time" variants={rise} custom={4}>
+            <small>When</small>
+            {ev.time}
+          </motion.div>
+          <motion.p className="event__blurb" variants={rise} custom={5} style={{ color: palette.sub }}>
+            {ev.blurb}
+          </motion.p>
+          {ev.location && (
+            <motion.div className="event__actions" variants={rise} custom={6}>
+              <a
+                className="event__action"
+                href={MAPS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: palette.ink, borderColor: palette.accent }}
+              >
+                <span style={{ color: palette.accent }}>📍</span> Get directions
+                <small style={{ color: palette.sub }}>{ev.location}</small>
+              </a>
+            </motion.div>
+          )}
         </motion.div>
-        <motion.h2 className="event__name" variants={rise} custom={2} style={{ color: palette.accent }}>
-          {ev.name}
-        </motion.h2>
-        <motion.p className="event__script" variants={rise} custom={3}>
-          {ev.sanskrit}
-        </motion.p>
-        <motion.div className="event__time" variants={rise} custom={4}>
-          <small>When</small>
-          {ev.time}
-        </motion.div>
-        <motion.p className="event__blurb" variants={rise} custom={5} style={{ color: palette.sub }}>
-          {ev.blurb}
-        </motion.p>
-        {ev.location && (
-          <motion.div className="event__actions" variants={rise} custom={6}>
-            <a
-              className="event__action"
-              href={MAPS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: palette.ink, borderColor: palette.accent }}
-            >
-              <span style={{ color: palette.accent }}>📍</span> Get directions
-              <small style={{ color: palette.sub }}>{ev.location}</small>
-            </a>
+
+        {ev.image && (
+          <motion.div
+            className="event__photo"
+            initial={{ opacity: 0, scale: 0.94 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: false, amount: 0.4 }}
+            transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <img src={ev.image} alt={`${ev.name} — Gautam & Sandhya`} loading="lazy" />
           </motion.div>
         )}
-      </motion.div>
+      </div>
     </section>
   );
 }
@@ -122,34 +126,14 @@ export default function Events() {
 
   return (
     <div className="events" id="events" ref={containerRef}>
-      {/* Fixed background: each ceremony's caricature artwork, cross-fading
-          as guests scroll, with a palette-tinted scrim shading it so the
-          text above stays legible. */}
-      <div
+      {/* Fixed background that morphs between each ceremony's own colour
+          scheme while scrolling. */}
+      <motion.div
         aria-hidden="true"
-        style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: inView ? 1 : 0, transition: 'opacity 1.1s ease-in-out' }}
-      >
-        {events.map((ev, i) => (
-          <motion.div
-            key={ev.id}
-            className="events__bg-img"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: `url(${ev.image})`,
-              backgroundColor: ev.palette.bg[1],
-            }}
-            animate={{ opacity: i === active ? 1 : 0 }}
-            transition={{ duration: 1.1, ease: 'easeInOut' }}
-          />
-        ))}
-        <motion.div
-          className="events__scrim"
-          style={{ position: 'absolute', inset: 0 }}
-          animate={{ background: shade(palette, 0.82) }}
-          transition={{ duration: 1.1, ease: 'easeInOut' }}
-        />
-      </div>
+        style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
+        animate={{ background: gradient(palette), opacity: inView ? 1 : 0 }}
+        transition={{ duration: 1.1, ease: 'easeInOut' }}
+      />
 
       {/* Scroll-progress rail — always present (even over the hero/story),
           so guests can jump to any ceremony from anywhere on the page. */}
