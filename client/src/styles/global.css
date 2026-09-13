@@ -435,11 +435,25 @@ a {
     justify-content: center;
     margin: 1.4rem auto 0;
   }
+  /* Explicit width + centered margin (not just the parent's flex
+     align-items) so the frame reliably centers even where the browser
+     can't resolve the img's percentage width against a shrink-to-fit
+     flex item — and so it isn't left hugging one edge. */
   .event__photo {
+    width: 100%;
     max-width: 320px;
+    margin: 0 auto;
   }
   .event__photo img {
     max-height: 46vh;
+  }
+  /* The ceremony icon/glyph sits directly above the ceremony name (e.g.
+     the Mangalsutra graphic above "Muhurtham") — center it explicitly
+     rather than relying on inherited text-align, since an inline SVG
+     doesn't always honor that the way plain emoji text does. */
+  .event__icon {
+    display: flex;
+    justify-content: center;
   }
 }
 .event__badge {
