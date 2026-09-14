@@ -378,7 +378,10 @@ a {
    at the same 4:3 and fills it (object-fit: cover), so the six ceremonies
    read as one consistent set of frames rather than each taking on its own
    photo's shape. Same ratio at every breakpoint (see the max-width:768px
-   block below); only the frame's overall size shrinks on phone. */
+   block below); only the frame's overall size shrinks on phone.
+   Exception: the reception photo is a full-length portrait shot — cropping
+   it into the 4:3 frame cut off the groom's head, so it gets its own
+   taller portrait frame instead (see .event__photo--portrait below). */
 .event__photo {
   flex: 1 1 360px;
   min-width: 0;
@@ -395,6 +398,14 @@ a {
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 24px 70px -24px rgba(0, 0, 0, 0.55);
+}
+/* Reception photo: 853×1280 (2:3) full-length shot — use its native ratio
+   so object-fit: cover shows the whole image instead of cropping. Higher
+   specificity (two classes) so it wins over the 4:3 rule above and the
+   mobile max-width override below. */
+.event__photo.event__photo--portrait {
+  max-width: 340px;
+  aspect-ratio: 2 / 3;
 }
 @media (max-width: 768px) {
   .event__row {
@@ -432,6 +443,11 @@ a {
     width: 100%;
     max-width: 320px;
     margin: 0 auto;
+  }
+  /* Keep the reception portrait frame narrower than the 320px landscape
+     frames above — at 2:3 that width would make it very tall on phone. */
+  .event__photo.event__photo--portrait {
+    max-width: 260px;
   }
   /* The ceremony icon/glyph sits directly above the ceremony name (e.g.
      the Mangalsutra graphic above "Muhurtham") — center it explicitly
