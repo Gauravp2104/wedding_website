@@ -13,8 +13,7 @@
     "upload:pictures": "node scripts/upload-event-pictures.mjs"
   },
   "dependencies": {
-    "@vercel/blob": "^0.27.0",
-    "exceljs": "^4.4.0"
+    "@vercel/blob": "^0.27.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

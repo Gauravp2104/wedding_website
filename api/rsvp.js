@@ -6,7 +6,7 @@ import { incr, logger, newRequestId } from '../lib/logger.js';
 // device (or one who cleared localStorage) can look up and re-edit their
 // response by id.
 // POST /api/rsvp — append/upsert one RSVP to the rsvps.json blob (which also
-// regenerates rsvps.xlsx — see lib/rsvp-store.js) (Vercel deployment).
+// re-syncs the live Google Sheet — see lib/rsvp-store.js) (Vercel deployment).
 export default async function handler(req, res) {
   const requestId = newRequestId();
   res.setHeader('X-Request-Id', requestId);

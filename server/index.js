@@ -7,7 +7,7 @@ import { dirname, join } from 'path';
 import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import { logger, incr, getMetrics, newRequestId } from '../lib/logger.js';
 import { buildRsvpEntry } from '../lib/rsvp-entry.js';
-import { buildRsvpWorkbookBuffer } from '../lib/rsvp-xlsx.js';
+import { syncRsvpsToSheet, isSheetsConfigured } from '../lib/google-sheets.js';
 
 dotenv.config();
 
@@ -16,7 +16,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // (e.g. DATA_DIR=/data) so RSVPs survive restarts and redeploys.
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, 'data');
 const RSVP_FILE = join(DATA_DIR, 'rsvps.json');
-const RSVP_XLSX_FILE = join(DATA_DIR, 'rsvps.xlsx');
 // Curated album images for local dev (image1…image12). In production the same
 // images live in Vercel Blob under the "images/" prefix.
 const IMAGES_DIR = join(__dirname, '..', 'client', 'public', 'images');
@@ -77,15 +76,14 @@ async function saveRsvp(entry) {
   else all.push(entry);
   await writeFile(RSVP_FILE, JSON.stringify(all, null, 2), 'utf-8');
 
-  // Best-effort: rsvps.json above is the source of truth, so a spreadsheet
-  // failure never fails the RSVP save.
+  // Best-effort: rsvps.json above is the source of truth, so a Google
+  // Sheets sync failure never fails the RSVP save.
   try {
-    const buffer = await buildRsvpWorkbookBuffer(all);
-    await writeFile(RSVP_XLSX_FILE, buffer);
-    incr('rsvpXlsxSaved');
+    await syncRsvpsToSheet(all);
+    incr('rsvpSheetSynced');
   } catch (err) {
-    incr('rsvpXlsxFailed');
-    logger.error('rsvp.xlsx.failed', { error: err.message });
+    incr('rsvpSheetSyncFailed');
+    logger.error('rsvp.sheet.failed', { error: err.message });
   }
 
   return all;
@@ -97,7 +95,7 @@ async function saveRsvp(entry) {
 
 // Health + live metrics for monitoring.
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, metrics: getMetrics() });
+  res.json({ ok: true, metrics: getMetrics(), sheetsConfigured: isSheetsConfigured() });
 });
 
 // Fetch one guest's saved RSVP by id, so a guest on a new device (or one
@@ -138,16 +136,6 @@ app.get('/api/rsvps', async (_req, res) => {
   res.json(await readRsvps());
 });
 
-// Download the live RSVP spreadsheet — regenerated on every save.
-app.get('/api/rsvps.xlsx', async (_req, res) => {
-  try {
-    await readFile(RSVP_XLSX_FILE);
-  } catch {
-    return res.status(404).json({ ok: false, error: 'No RSVPs yet.' });
-  }
-  res.download(RSVP_XLSX_FILE, 'rsvps.xlsx');
-});
-
 // Public album listing — the curated images in client/public/images,
 // ordered image1 → image12. (Production lists Vercel Blob "images/" instead.)
 app.get('/api/album/list', async (_req, res) => {
@@ -180,11 +168,14 @@ app.listen(PORT, () => {
     rsvpFile: RSVP_FILE,
     imagesDir: IMAGES_DIR,
     clientServed: existsSync(CLIENT_DIST),
+    sheetsConfigured: isSheetsConfigured(),
   });
   console.log(`\n🕉  Wedding API running on http://localhost:${PORT}`);
   console.log(`   • RSVPs saved to:   ${RSVP_FILE}`);
   console.log(`   • Album images:     ${IMAGES_DIR}`);
   console.log(`   • View RSVPs:       http://localhost:${PORT}/api/rsvps`);
-  console.log(`   • RSVP spreadsheet: http://localhost:${PORT}/api/rsvps.xlsx`);
+  console.log(
+    `   • Google Sheet sync: ${isSheetsConfigured() ? 'configured' : 'not configured (see README.md "Live Google Sheet")'}`
+  );
   console.log(`   • Health + metrics: http://localhost:${PORT}/api/health\n`);
 });
