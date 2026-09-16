@@ -1491,59 +1491,6 @@ a {
   }
 }
 
-/* ── Floating music toggle ──────────────────────────────── */
-.audio-toggle {
-  position: fixed;
-  right: calc(clamp(0.9rem, 4vw, 2rem) + env(safe-area-inset-right, 0px));
-  /* On phones, a fixed bottom offset alone can render right under the
-     browser's own bottom toolbar (iOS Safari, gesture-bar Android) —
-     unreachable/partly hidden until it auto-hides on scroll. Add the
-     safe-area inset so the button always clears it. */
-  bottom: calc(clamp(0.9rem, 4vw, 2rem) + env(safe-area-inset-bottom, 0px));
-  z-index: 60; /* above the nav (50), below the album lightbox (100) */
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 1.5px solid var(--gold-bright);
-  background: rgba(42, 7, 18, 0.72);
-  color: var(--gold-bright);
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.2s, background 0.2s;
-}
-.audio-toggle:hover {
-  transform: translateY(-2px);
-  background: rgba(122, 31, 43, 0.85);
-}
-.audio-toggle.on {
-  animation: audioPulse 2.6s ease-out infinite;
-}
-/* No mute control on phone — music just plays softly in the background;
-   see AudioToggle.jsx, which still autoplays the same way regardless of
-   the button's visibility. */
-@media (max-width: 640px) {
-  .audio-toggle {
-    display: none;
-  }
-}
-@keyframes audioPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(231, 184, 78, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 14px rgba(231, 184, 78, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(231, 184, 78, 0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -1551,8 +1498,5 @@ a {
   * {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
-  }
-  .audio-toggle.on {
-    animation: none;
   }
 }

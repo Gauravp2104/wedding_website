@@ -10,7 +10,8 @@
     "build": "npm --prefix client run build",
     "start": "npm --prefix server start",
     "upload:images": "node scripts/upload-images.mjs",
-    "upload:pictures": "node scripts/upload-event-pictures.mjs"
+    "upload:pictures": "node scripts/upload-event-pictures.mjs",
+    "sync:rsvps": "node scripts/sync-rsvps-to-sheet.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^0.27.0"
